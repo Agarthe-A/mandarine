@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mandarine — glisse un fichier, tape une touche, dépose</title>
+<meta name="description" content="Mandarine : une roue dans la barre de menus du Mac pour convertir, transformer ou déplacer un fichier sans ouvrir d'app.">
+<style>
+:root{
+  --paper:#F6F1E7; --paper-2:#EDE6D6; --ink:#17130E; --muted:#6B6256; --rule:#D6CCB8;
+  --orange:#FF8C1A; --orange-ink:#A84F00; --wheel:#1A1A1A;
+  --serif: "Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+  --sans: -apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;
+  --mono: ui-monospace,"SF Mono",Menlo,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.55 var(--sans);-webkit-font-smoothing:antialiased}
+a{color:inherit}
+.wrap{max-width:1120px;margin:0 auto;padding:0 28px}
+:focus-visible{outline:3px solid var(--orange);outline-offset:3px;border-radius:4px}
+
+/* en-tête */
+header{display:flex;justify-content:space-between;align-items:baseline;padding:26px 0}
+.brand{font:700 22px var(--serif);letter-spacing:-.01em;text-decoration:none}
+.brand i{font-style:normal;margin-right:8px}
+header nav a{font-size:15px;color:var(--muted);text-decoration:none;margin-left:26px}
+header nav a:hover{color:var(--ink);text-decoration:underline;text-underline-offset:4px}
+
+/* héros */
+.hero{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:56px;align-items:center;padding:40px 0 88px}
+h1{font:700 clamp(46px,6.6vw,84px)/.98 var(--serif);letter-spacing:-.025em;margin:0 0 28px}
+h1 em{font-style:normal;color:var(--orange)}
+.lede{font-size:20px;max-width:30em;margin:0 0 30px;color:#3a332a}
+.status{display:inline-flex;gap:10px;align-items:center;font:14px var(--mono);color:var(--muted);border:1px solid var(--rule);border-radius:999px;padding:8px 16px}
+.status b{width:8px;height:8px;border-radius:50%;background:var(--orange);display:inline-block}
+
+/* scène de la roue */
+.stage{background:var(--paper-2);border:1px solid var(--rule);border-radius:28px;padding:26px 26px 22px;position:relative}
+.stage-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+.keys{display:flex;gap:8px}
+.key{font:600 15px var(--mono);min-width:44px;min-height:44px;padding:0 14px;border-radius:12px;border:1px solid var(--rule);background:var(--paper);color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+.key small{font:500 12px var(--sans);color:var(--muted)}
+.key[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
+.key[aria-pressed="true"] small{color:#cfc6b4}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font:500 13px var(--mono);min-height:44px;padding:0 13px;border-radius:999px;border:1px solid var(--rule);background:transparent;color:var(--muted);cursor:pointer}
+.chip[aria-pressed="true"]{border-color:var(--ink);color:var(--ink);background:var(--paper)}
+#wheel{width:100%;max-width:400px;display:block;margin:6px auto 0;overflow:visible}
+.slice{cursor:pointer}
+.slice path{fill:#252525;stroke:rgba(255,255,255,.1);stroke-width:1;transition:fill .12s}
+.slice text{fill:#fff;font:600 13px var(--sans);text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.slice:hover path,.slice:focus path,.slice.on path{fill:var(--orange);stroke:none}
+.slice:hover text,.slice:focus text,.slice.on text{fill:#000}
+.slice:focus{outline:none}
+.hint{font-size:14px;color:var(--muted);text-align:center;margin:10px 0 0;min-height:1.6em}
+.empty{position:absolute;left:0;right:0;top:50%;text-align:center;font-size:14px;color:var(--muted);pointer-events:none}
+
+/* sections */
+section{padding:72px 0;border-top:1px solid var(--rule)}
+h2{font:700 clamp(30px,4vw,44px)/1.05 var(--serif);letter-spacing:-.02em;margin:0 0 14px}
+.sec-grid{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:56px}
+.sec-grid p.intro{color:var(--muted);margin:0;max-width:24em}
+
+dl.rows{margin:0}
+dl.rows>div{display:grid;grid-template-columns:150px 1fr;gap:20px;padding:18px 0;border-bottom:1px solid var(--rule)}
+dl.rows>div:first-child{padding-top:0}
+dt{font:700 19px var(--serif)}
+dd{margin:0;font:15px/1.7 var(--mono);color:#3a332a}
+dd span{white-space:nowrap}
+
+ol.steps{list-style:none;margin:0;padding:0}
+ol.steps li{display:grid;grid-template-columns:76px 1fr;gap:20px;padding:22px 0;border-bottom:1px solid var(--rule);align-items:start}
+ol.steps li:first-child{padding-top:0}
+.glyph{font:700 44px/1 var(--serif);color:var(--orange)}
+ol.steps h3{font:700 21px var(--serif);margin:0 0 4px}
+ol.steps p{margin:0;color:#3a332a}
+
+.engine{font:15px/1.9 var(--mono);color:#3a332a;display:flex;flex-wrap:wrap;gap:8px;margin:0}
+.engine code{background:var(--paper-2);padding:3px 9px;border-radius:7px;white-space:nowrap}
+
+.todo{columns:2;column-gap:40px;margin:0;padding:0;list-style:none}
+.todo li{padding:7px 0;border-bottom:1px dotted var(--rule);break-inside:avoid;color:#3a332a}
+
+footer{border-top:1px solid var(--rule);padding:32px 0 56px;color:var(--muted);font-size:14px;display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
+
+@media (max-width:860px){
+  .hero,.sec-grid{grid-template-columns:minmax(0,1fr);gap:36px}
+  .wrap{padding:0 20px}
+  dl.rows>div{grid-template-columns:1fr;gap:4px}
+  .todo{columns:1}
+  header nav a{margin-left:16px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="brand" href="#"><i>🍊</i>Mandarine</a>
+    <nav><a href="#roue">La roue</a><a href="#formats">Formats</a><a href="#etat">État</a></nav>
+  </header>
+
+  <main>
+    <div class="hero">
+      <div>
+        <h1>Glisse.<br>Tape.<br><em>Dépose.</em></h1>
+        <p class="lede">Une roue apparaît dans la barre de menus du Mac dès que tu attrapes un fichier. Une touche choisit ce que tu veux en faire : convertir, transformer, déplacer. Tu lâches sur une tranche, c'est fait.</p>
+        <span class="status"><b></b>Version perso, construite en Swift pour macOS</span>
+      </div>
+
+      <div class="stage" id="roue">
+        <div class="stage-top">
+          <div class="keys" role="group" aria-label="Touche maintenue pendant le glisser">
+            <button class="key" data-mode="convert" aria-pressed="true">⇧ <small>Convertir</small></button>
+            <button class="key" data-mode="tools" aria-pressed="false">⌘ <small>Outils</small></button>
+            <button class="key" data-mode="actions" aria-pressed="false">⌃ <small>Actions</small></button>
+          </div>
+        </div>
+        <svg id="wheel" viewBox="0 0 340 340" role="img" aria-label="Roue Mandarine"></svg>
+        <div class="empty" id="empty" hidden>Aucun outil pour ce type de fichier.</div>
+        <p class="hint" id="hint"></p>
+        <div class="chips" role="group" aria-label="Type de fichier déposé" style="margin-top:10px;justify-content:center">
+          <button class="chip" data-type="image" aria-pressed="true">photo.png</button>
+          <button class="chip" data-type="video" aria-pressed="false">clip.mp4</button>
+          <button class="chip" data-type="pdf" aria-pressed="false">doc.pdf</button>
+          <button class="chip" data-type="txt" aria-pressed="false">note.txt</button>
+        </div>
+      </div>
+    </div>
+
+    <section id="video" style="padding-top:0;border-top:0">
+      <video controls playsinline preload="metadata" poster="poster.jpg" style="width:100%;border-radius:20px;border:1px solid var(--rule);background:var(--paper-2);display:block" aria-label="Vidéo de présentation de Mandarine, 18 secondes">
+        <source src="presentation.mp4" type="video/mp4">
+        Ton navigateur ne lit pas la vidéo : <a href="presentation.mp4">télécharge-la ici</a>.
+      </video>
+      <p style="color:var(--muted);font-size:14px;margin:10px 0 0">18 secondes, faites à partir des vraies roues de l'app.</p>
+    </section>
+
+    <section>
+      <div class="sec-grid">
+        <div>
+          <h2>Un geste, trois touches</h2>
+          <p class="intro">Essaie sur la roue ci-dessus : au clavier, ⇧ ⌘ ⌃ changent de mode, ou clique sur les boutons.</p>
+        </div>
+        <ol class="steps">
+          <li><span class="glyph">⇧</span><div><h3>Convertir</h3><p>Les formats de sortie dépendent du fichier. Un PNG propose JPG, WEBP, HEIC, TIFF, AVIF, GIF, PDF.</p></div></li>
+          <li><span class="glyph">⌘</span><div><h3>Outils</h3><p>Compresser, réduire de moitié, retirer les métadonnées, couper le son d'une vidéo, fusionner des PDF, assembler des images en PDF.</p></div></li>
+          <li><span class="glyph">⌃</span><div><h3>Actions</h3><p>Copier le chemin, copier le fichier, AirDrop, déplacer, ouvrir un Terminal à cet endroit.</p></div></li>
+          <li><span class="glyph">⎋</span><div><h3>Échap</h3><p>Tu changes d'avis : la roue disparaît, le fichier n'a pas bougé.</p></div></li>
+        </ol>
+      </div>
+    </section>
+
+    <section id="formats">
+      <div class="sec-grid">
+        <div>
+          <h2>Ce qu'elle convertit</h2>
+          <p class="intro">Testé en ligne de commande sur des fichiers réels, pas seulement annoncé.</p>
+        </div>
+        <dl class="rows">
+          <div><dt>Images</dt><dd><span>jpg</span> <span>png</span> <span>webp</span> <span>heic</span> <span>tiff</span> <span>avif</span> <span>gif</span> <span>pdf</span></dd></div>
+          <div><dt>Vidéo</dt><dd><span>mp4</span> <span>mov</span> <span>mkv</span> <span>webm</span> <span>gif</span> <span>mp3</span></dd></div>
+          <div><dt>Audio</dt><dd><span>mp3</span> <span>m4a</span> <span>wav</span> <span>flac</span> <span>opus</span> <span>aiff</span></dd></div>
+          <div><dt>Documents</dt><dd><span>docx</span> <span>pdf</span> <span>html</span> <span>md</span> <span>epub</span> <span>txt</span> <span>rtf</span></dd></div>
+          <div><dt>PDF</dt><dd><span>png</span> <span>jpg</span> <span>txt</span></dd></div>
+          <div><dt>Archives</dt><dd><span>zip</span> <span>extraction</span></dd></div>
+        </dl>
+      </div>
+    </section>
+
+    <section>
+      <div class="sec-grid">
+        <div>
+          <h2>Sous le capot</h2>
+          <p class="intro">Pas de service en ligne : tout tourne sur ton Mac, avec des outils éprouvés.</p>
+        </div>
+        <p class="engine"><code>sips</code><code>ffmpeg (embarqué)</code><code>PDFKit</code><code>Core Text</code><code>textutil</code><code>pandoc</code><code>ditto</code><code>tar</code></p>
+      </div>
+    </section>
+
+    <section id="etat">
+      <div class="sec-grid">
+        <div>
+          <h2>Où ça en est</h2>
+          <p class="intro">Les conversions et le dessin de la roue sont vérifiés. La détection réelle du glisser avec les touches ⇧ ⌘ ⌃ reste à valider à la main sur un Mac.</p>
+        </div>
+        <div>
+          <p style="margin:0 0 14px;font-weight:600">Pas encore là</p>
+          <ul class="todo">
+            <li>Rogner / annoter / éditer une photo</li>
+            <li>Couper et découper une vidéo</li>
+            <li>Flouter des visages</li>
+            <li>PDF vers docx / pptx / xlsx</li>
+            <li>Présentations et tableurs</li>
+            <li>Sous-titres</li>
+            <li>Archives RAR</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span>🍊 Mandarine — projet perso de Julian, signature ad-hoc, build local.</span>
+    <span>Inspiré de Tangerine (tangerineformac.com). Aucun lien avec ses auteurs.</span>
+  </footer>
+</div>
+
+<script>
+(() => {
+  const DATA = {
+    image:{ext:"PNG", convert:["JPG","WEBP","HEIC","TIFF","AVIF","GIF","PDF"], tools:["Compresser","Réduire 50 %","Sans métadonnées"]},
+    video:{ext:"MP4", convert:["MOV","MKV","WEBM","GIF","MP3"], tools:["Compresser","Couper le son","Sans métadonnées"]},
+    pdf:  {ext:"PDF", convert:["PNG","JPG","TXT"], tools:[]},
+    txt:  {ext:"TXT", convert:["DOCX","PDF","RTF","HTML"], tools:[]}
+  };
+  const ACTIONS = ["Copier le chemin","Copier","AirDrop","Déplacer…","Terminal"];
+  const GLYPH = {convert:"⇧", tools:"⌘", actions:"⌃"};
+  const HINT = {
+    convert:"Lâche sur un format pour convertir le fichier.",
+    tools:"Lâche sur un outil pour transformer le fichier.",
+    actions:"Lâche sur une action pour l'envoyer ailleurs."
+  };
+  const svg = document.getElementById("wheel"), hint = document.getElementById("hint"), empty = document.getElementById("empty");
+  const NS = "http://www.w3.org/2000/svg";
+  const C = 170, R_IN = 50, R_OUT = 142, GAP = 1.6;
+  let mode = "convert", type = "image";
+
+  const pt = (r, deg) => { const a = (deg - 90) * Math.PI / 180; return [C + r * Math.cos(a), C + r * Math.sin(a)]; };
+  const el = (tag, attrs, text) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (text) e.textContent = text; return e; };
+
+  function sliceD(i, n) {
+    const g = n > 1 ? GAP : 0, a0 = i * 360 / n + g, a1 = (i + 1) * 360 / n - g;
+    const [x0, y0] = pt(R_OUT, a0), [x1, y1] = pt(R_OUT, a1), [x2, y2] = pt(R_IN, a1), [x3, y3] = pt(R_IN, a0);
+    const large = (a1 - a0) > 180 ? 1 : 0;
+    return `M${x0},${y0} A${R_OUT},${R_OUT} 0 ${large} 1 ${x1},${y1} L${x2},${y2} A${R_IN},${R_IN} 0 ${large} 0 ${x3},${y3} Z`;
+  }
+
+  function draw() {
+    svg.replaceChildren();
+    const items = mode === "convert" ? DATA[type].convert : mode === "tools" ? DATA[type].tools : ACTIONS;
+    svg.appendChild(el("circle", {cx:C, cy:C, r:R_OUT + 10, fill:"rgba(0,0,0,.28)"}));
+    empty.hidden = items.length > 0;
+    items.forEach((label, i) => {
+      const g = el("g", {class:"slice", tabindex:0, role:"button", "aria-label":label});
+      g.appendChild(el("path", {d:sliceD(i, items.length)}));
+      const [tx, ty] = pt((R_IN + R_OUT) / 2 + 4, (i + .5) * 360 / items.length);
+      g.appendChild(el("text", {x:tx, y:ty, style:`font-size:${items.length > 6 ? 12 : 13}px`}, label));
+      g.addEventListener("click", () => { hint.textContent = `Sur ton Mac, ça ferait : ${label}.`; });
+      svg.appendChild(g);
+    });
+    svg.appendChild(el("circle", {cx:C, cy:C, r:R_IN - 4, fill:"#0f0f0f", stroke:"#FF8C1A", "stroke-width":2}));
+    svg.appendChild(el("text", {x:C, y:C - 6, fill:"#FF8C1A", "text-anchor":"middle", "dominant-baseline":"central", style:"font:700 24px -apple-system,sans-serif"}, GLYPH[mode]));
+    svg.appendChild(el("text", {x:C, y:C + 16, fill:"#ccc", "text-anchor":"middle", "dominant-baseline":"central", style:"font:400 10px -apple-system,sans-serif"}, DATA[type].ext));
+    hint.textContent = items.length ? HINT[mode] : "";
+    document.querySelectorAll(".key").forEach(b => b.setAttribute("aria-pressed", b.dataset.mode === mode));
+    document.querySelectorAll(".chip").forEach(b => b.setAttribute("aria-pressed", b.dataset.type === type));
+  }
+
+  document.querySelectorAll(".key").forEach(b => b.addEventListener("click", () => { mode = b.dataset.mode; draw(); }));
+  document.querySelectorAll(".chip").forEach(b => b.addEventListener("click", () => { type = b.dataset.type; draw(); }));
+  addEventListener("keydown", e => {
+    if (e.repeat || e.key === "Tab") return;
+    const m = { Shift:"convert", Meta:"tools", Control:"actions" }[e.key];
+    if (m) { mode = m; draw(); }
+  });
+  draw();
+})();
+</script>
+</body>
+</html>
