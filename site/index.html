@@ -56,6 +56,9 @@ h1 em{font-style:normal;color:var(--orange)}
 .hint{font-size:14px;color:var(--muted);text-align:center;margin:10px 0 0;min-height:1.6em}
 .empty{position:absolute;left:0;right:0;top:50%;text-align:center;font-size:14px;color:var(--muted);pointer-events:none}
 
+.dl{display:inline-flex;align-items:baseline;gap:12px;background:var(--ink);color:#fff;text-decoration:none;font:700 19px var(--serif);padding:14px 24px;min-height:48px;border-radius:14px}
+.dl small{font:500 13px var(--mono);color:#cfc6b4}
+.dl:hover{background:var(--orange);color:#000}.dl:hover small{color:#3a2a10}
 /* sections */
 section{padding:72px 0;border-top:1px solid var(--rule)}
 h2{font:700 clamp(30px,4vw,44px)/1.05 var(--serif);letter-spacing:-.02em;margin:0 0 14px}
@@ -98,7 +101,7 @@ footer{border-top:1px solid var(--rule);padding:32px 0 56px;color:var(--muted);f
 <div class="wrap">
   <header>
     <a class="brand" href="#"><i>🍊</i>Mandarine</a>
-    <nav><a href="#roue">La roue</a><a href="#formats">Formats</a><a href="#etat">État</a></nav>
+    <nav><a href="#roue">La roue</a><a href="#formats">Formats</a><a href="#installer">Installer</a><a href="#etat">État</a></nav>
   </header>
 
   <main>
@@ -106,7 +109,8 @@ footer{border-top:1px solid var(--rule);padding:32px 0 56px;color:var(--muted);f
       <div>
         <h1>Glisse.<br>Tape.<br><em>Dépose.</em></h1>
         <p class="lede">Une roue apparaît dans la barre de menus du Mac dès que tu attrapes un fichier. Une touche choisit ce que tu veux en faire : convertir, transformer, déplacer. Tu lâches sur une tranche, c'est fait.</p>
-        <span class="status"><b></b>Version perso, construite en Swift pour macOS</span>
+        <p style="margin:0 0 18px"><a class="dl" href="https://github.com/Agarthe-A/mandarine/releases/download/v0.1/Mandarine-0.1.dmg" download>Télécharger pour Mac <small>.dmg · 30 Mo · Apple Silicon</small></a></p>
+        <span class="status"><b></b>Version 0.1 · macOS 13 ou plus récent</span>
       </div>
 
       <div class="stage" id="roue">
@@ -177,6 +181,21 @@ footer{border-top:1px solid var(--rule);padding:32px 0 56px;color:var(--muted);f
         </div>
         <p class="engine"><code>sips</code><code>ffmpeg (embarqué)</code><code>PDFKit</code><code>Core Text</code><code>textutil</code><code>pandoc</code><code>ditto</code><code>tar</code></p>
       </div>
+    </section>
+
+    <section id="installer">
+      <div class="sec-grid">
+        <div>
+          <h2>Installer</h2>
+          <p class="intro">Pour Mac avec puce Apple (M1 et suivantes). Pas encore de version Intel.</p>
+        </div>
+        <ol class="steps">
+          <li><span class="glyph">1</span><div><h3>Télécharge et ouvre le .dmg</h3><p>Glisse Mandarine dans Applications.</p></div></li>
+          <li><span class="glyph">2</span><div><h3>Premier lancement : clic droit &gt; Ouvrir</h3><p>L'app n'est pas notarisée par Apple (compte développeur payant), macOS te demande donc confirmation une fois. S'il la dit « endommagée », ouvre le Terminal et tape <code style="background:var(--paper-2);padding:2px 7px;border-radius:6px">xattr -cr /Applications/Mandarine.app</code></p></div></li>
+          <li><span class="glyph">3</span><div><h3>Cherche 🍊 dans la barre de menus</h3><p>Glisse un fichier, puis appuie sur Maj, Cmd ou Ctrl pendant que tu le tiens.</p></div></li>
+        </ol>
+      </div>
+      <p style="color:var(--muted);font-size:14px;margin:28px 0 0">Mandarine embarque FFmpeg (GPL v3). Code source : <a href="https://github.com/Agarthe-A/mandarine">github.com/Agarthe-A/mandarine</a>.</p>
     </section>
 
     <section id="etat">
