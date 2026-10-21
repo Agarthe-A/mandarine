@@ -9,7 +9,7 @@ FF=${FFMPEG:-$HOME/.hermes/tools/ffmpeg-9.0.1-darwin-arm64/ffmpeg}
 [ -x "$M" ] || { echo "Mandarine.app absente: lancer ./build.sh"; exit 2; }
 [ -x "$FF" ] || { echo "ffmpeg introuvable: $FF"; exit 2; }
 "$M" --list convert /dev/null >/dev/null 2>&1 || true
-T=$(mktemp -d "${TMPDIR:-/tmp}/mandarine-verify.XXXXXX"); trap 'rm -rf "$T"' EXIT
+T=$(mktemp -d "${TMPDIR:-/tmp}/mandarine-verify.XXXXXX"); trap '[ -n "$SRVPID" ] && kill $SRVPID 2>/dev/null; rm -rf "$T"' EXIT
 cd "$T"
 $FF -loglevel error -f lavfi -i testsrc=duration=2:size=640x360:rate=24 -f lavfi -i sine=frequency=440:duration=2 -c:v libx264 -pix_fmt yuv420p -c:a aac a.mp4
 $FF -loglevel error -f lavfi -i sine=frequency=440:duration=2 s.wav
@@ -91,6 +91,49 @@ assert "--list tools mp4 contient video720 et speed2, pas rotate90" '"$M" --list
 assert "--list tools wav : normalize+trimSilence" '"$M" --list tools s.wav | grep -q tool:normalize && "$M" --list tools s.wav | grep -q tool:trimSilence'
 assert "--list tools pdf : firstPage" '"$M" --list tools p.pdf | grep -q tool:firstPage'
 assert "--list convert srt/csv" '"$M" --list convert s.srt | grep -q convert:vtt && "$M" --list convert d.csv | grep -q convert:tsv'
+# --- mise à jour depuis l'app : faux serveur local (jamais GitHub), dmg de test en version 99.0
+SRV=$T/srv; mkdir -p $SRV $T/inst
+mkfix() {  # mkfix <dossier-app-source> <nom.dmg> <version> <bundle-id>
+  local d=$(mktemp -d "$T/fix.XXXXXX"); cp -R "$ROOT/build/Mandarine.app" $d/
+  /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $3" -c "Set :CFBundleIdentifier $4" $d/Mandarine.app/Contents/Info.plist
+  codesign --force --deep -s - $d/Mandarine.app >/dev/null 2>&1
+  hdiutil create -quiet -volname Mandarine -srcfolder $d -format UDZO -ov "$SRV/$2" && rm -rf $d
+}
+mkjson() {  # mkjson <fichier.json> <tag> <dmg|""> <sha|""> : release factice au format GitHub
+  python3 -I -c 'import sys,json;f,tag,dmg,sha,port=sys.argv[1:6];a=[{"name":dmg,"browser_download_url":"http://127.0.0.1:%s/%s"%(port,dmg)}] if dmg else [];open(f,"w").write(json.dumps({"tag_name":tag,"body":"Nouveautés de test"+((chr(10)+"SHA-256: "+sha) if sha else ""),"assets":a}))' "$SRV/$1" "$2" "$3" "$4" "$PORT"
+}
+PORT=$(python3 -I -c 'import socket;s=socket.socket();s.bind(("127.0.0.1",0));print(s.getsockname()[1])')
+mkfix x Mandarine-99.0.dmg 99.0 fr.julian.mandarine
+mkfix x Mandarine-bad.dmg 99.0 evil.app
+GOOD=$(shasum -a 256 $SRV/Mandarine-99.0.dmg | cut -d" " -f1); BADID=$(shasum -a 256 $SRV/Mandarine-bad.dmg | cut -d" " -f1)
+mkjson ok.json v99.0 Mandarine-99.0.dmg $GOOD
+mkjson badsha.json v99.0 Mandarine-99.0.dmg 0000000000000000000000000000000000000000000000000000000000000000
+mkjson nosha.json v99.0 Mandarine-99.0.dmg ""
+mkjson badid.json v99.0 Mandarine-bad.dmg $BADID
+mkjson nodmg.json v99.0 "" ""
+mkjson old.json v0.0.1 Mandarine-99.0.dmg $GOOD
+mkjson ten.json v0.10.0 Mandarine-99.0.dmg $GOOD
+python3 -I -m http.server $PORT --bind 127.0.0.1 --directory $SRV >/dev/null 2>&1 &
+SRVPID=$!; sleep 1
+U=http://127.0.0.1:$PORT
+newapp() { rm -rf $T/inst/Mandarine.app; cp -R "$ROOT/build/Mandarine.app" $T/inst/; }
+iv() { /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" $T/inst/Mandarine.app/Contents/Info.plist; }
+assert "maj : version plus récente détectée" '[ "$("$M" --check-update $U/ok.json)" = "nouvelle version 99.0" ]'
+assert "maj : version plus ancienne = à jour" '"$M" --check-update $U/old.json | grep -q "^à jour"'
+assert "maj : 0.10.0 est plus récent que la version actuelle (comparaison numérique)" '[ "$("$M" --check-update $U/ten.json)" = "nouvelle version 0.10.0" ]'
+assert "maj : serveur injoignable = erreur propre" '! "$M" --check-update http://127.0.0.1:1/x.json >/dev/null 2>&1'
+newapp; V0=$(iv)
+assert "maj : empreinte fausse refusée, app intacte" '! "$M" --self-update $U/badsha.json $T/inst/Mandarine.app >/dev/null 2>&1 && [ "$(iv)" = "$V0" ]'
+assert "maj : empreinte absente refusée, app intacte" '! "$M" --self-update $U/nosha.json $T/inst/Mandarine.app >/dev/null 2>&1 && [ "$(iv)" = "$V0" ]'
+assert "maj : .dmg d'une autre app refusé, app intacte" '! "$M" --self-update $U/badid.json $T/inst/Mandarine.app >/dev/null 2>&1 && [ "$(iv)" = "$V0" ]'
+assert "maj : release sans .dmg refusée" '! "$M" --self-update $U/nodmg.json $T/inst/Mandarine.app >/dev/null 2>&1 && [ "$(iv)" = "$V0" ]'
+assert "maj : version déjà installée ou plus ancienne refusée" '! "$M" --self-update $U/old.json $T/inst/Mandarine.app >/dev/null 2>&1 && [ "$(iv)" = "$V0" ]'
+assert "maj : installation réussie (version 99.0)" '"$M" --self-update $U/ok.json $T/inst/Mandarine.app | grep -q "installée 99.0" && [ "$(iv)" = "99.0" ]'
+assert "maj : app installée valide (signature + démarre)" 'codesign --verify --deep --strict $T/inst/Mandarine.app && $T/inst/Mandarine.app/Contents/MacOS/Mandarine --list tools p.png | grep -q tool:rotate90'
+assert "maj : aucun fichier temporaire laissé à côté de l'app" '[ -z "$(ls -A $T/inst | grep -v "^Mandarine.app$")" ]'
+assert "maj : plus de volume monté" '! hdiutil info | grep -q mandarine-update'
+assert "maj : deuxième passage = déjà à jour" '! "$M" --self-update $U/ok.json $T/inst/Mandarine.app >/dev/null 2>&1'
+kill $SRVPID 2>/dev/null; SRVPID=
 # cas d'erreur : un type de fichier inconnu doit échouer proprement (code ≠ 0), pas planter
 echo x > z.xyz; if "$M" --run convert:png z.xyz >/dev/null 2>&1; then echo "FAIL fichier inconnu accepté"; fail=$((fail+1)); else echo "ok   fichier inconnu refusé"; pass=$((pass+1)); fi
 echo; echo "résultat: $pass ok, $fail échec(s)"

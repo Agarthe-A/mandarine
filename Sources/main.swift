@@ -48,12 +48,33 @@ final class WheelPanel: NSPanel {
     override var canBecomeMain: Bool { false }
 }
 
+//   Mandarine --check-update [url-api]            : affiche « à jour » ou « nouvelle version X »
+//   Mandarine --self-update <url-api> <chemin.app> : installe la version annoncée à la place de <chemin.app> (test)
+if args.count >= 2, args[1] == "--check-update" {
+    do {
+        let r = try Updater.latest(api: args.count >= 3 ? args[2] : Updater.defaultAPI)
+        print(Updater.isNewer(r.version, than: Updater.current) ? "nouvelle version \(r.version)" : "à jour (\(Updater.current))")
+        exit(0)
+    } catch { FileHandle.standardError.write(Data("ERREUR: \(error)\n".utf8)); exit(1) }
+}
+if args.count >= 4, args[1] == "--self-update" {
+    do {
+        let r = try Updater.latest(api: args[2])
+        try Updater.install(r, target: URL(fileURLWithPath: args[3]), strict: false)
+        print("installée \(r.version)")
+        exit(0)
+    } catch { FileHandle.standardError.write(Data("ERREUR: \(error)\n".utf8)); exit(1) }
+}
+
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let size: CGFloat = 340
     var panel: WheelPanel!
     var wheel: WheelView!
     var toast: NSPanel?
     var statusItem: NSStatusItem!
+    var updateItem: NSMenuItem!
+    var autoItem: NSMenuItem!
+    var updating = false
 
     var timer: Timer?
     var lastPBCount = NSPasteboard(name: .drag).changeCount
@@ -85,8 +106,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(withTitle: "   ⌘ Cmd → outils", action: nil, keyEquivalent: "").isEnabled = false
         menu.addItem(withTitle: "   ⌃ Ctrl → actions", action: nil, keyEquivalent: "").isEnabled = false
         menu.addItem(.separator())
+        menu.addItem(withTitle: "Version \(Updater.current)", action: nil, keyEquivalent: "").isEnabled = false
+        updateItem = NSMenuItem(title: "Rechercher des mises à jour…", action: #selector(checkUpdatesManually), keyEquivalent: "")
+        updateItem.target = self
+        menu.addItem(updateItem)
+        autoItem = NSMenuItem(title: "Vérifier automatiquement", action: #selector(toggleAutoCheck), keyEquivalent: "")
+        autoItem.target = self; autoItem.state = Updater.autoCheck ? .on : .off
+        menu.addItem(autoItem)
+        menu.addItem(.separator())
         menu.addItem(withTitle: "Quitter", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         statusItem.menu = menu
+        // vérification discrète au lancement (après 8 s) puis toutes les 24 h
+        if Updater.autoCheck {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 8) { [weak self] in self?.checkUpdates(manual: false) }
+            Timer.scheduledTimer(withTimeInterval: 24 * 3600, repeats: true) { [weak self] _ in
+                if Updater.autoCheck { self?.checkUpdates(manual: false) }
+            }
+        }
 
         timer = Timer(timeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in self?.tick() }
         RunLoop.main.add(timer!, forMode: .common)
@@ -96,6 +132,69 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             dragURLs = args.dropFirst(3).map { URL(fileURLWithPath: $0) }
             showWheel(mode: args[2], at: NSPoint(x: NSScreen.main!.frame.midX, y: NSScreen.main!.frame.midY))
             wheel.hovered = 1
+        }
+    }
+
+    // MARK: mises à jour
+    @objc func toggleAutoCheck() {
+        Updater.autoCheck.toggle(); autoItem.state = Updater.autoCheck ? .on : .off
+    }
+    @objc func checkUpdatesManually() { checkUpdates(manual: true) }
+
+    func alert(_ title: String, _ text: String, buttons: [String] = ["OK"]) -> Bool {
+        NSApp.activate(ignoringOtherApps: true)
+        let a = NSAlert(); a.messageText = title; a.informativeText = text
+        buttons.forEach { a.addButton(withTitle: $0) }
+        return a.runModal() == .alertFirstButtonReturn
+    }
+
+    func checkUpdates(manual: Bool) {
+        if updating { return }
+        updating = true; updateItem.title = "Recherche en cours…"
+        DispatchQueue.global().async {
+            let res = Result { try Updater.latest() }
+            DispatchQueue.main.async {
+                self.updating = false; self.updateItem.title = "Rechercher des mises à jour…"
+                switch res {
+                case .failure(let e):
+                    if manual { _ = self.alert("Impossible de vérifier", "\(e)\n\nVérifie ta connexion internet.") }
+                case .success(let r):
+                    if !Updater.isNewer(r.version, than: Updater.current) {
+                        if manual { _ = self.alert("Mandarine est à jour", "Tu as la version \(Updater.current), la plus récente.") }
+                        return
+                    }
+                    let skipped = UserDefaults.standard.string(forKey: "skippedVersion")
+                    if !manual && skipped == r.version { return }
+                    let notes = Updater.shortNotes(r.notes)
+                    let go = self.alert("Mandarine \(r.version) est disponible",
+                                        "Tu as la version \(Updater.current).\n\n\(notes)",
+                                        buttons: ["Mettre à jour maintenant", "Plus tard"])
+                    if go { self.installUpdate(r) }
+                    else { UserDefaults.standard.set(r.version, forKey: "skippedVersion") }
+                }
+            }
+        }
+    }
+
+    func installUpdate(_ r: ReleaseInfo) {
+        updating = true; updateItem.title = "Mise à jour en cours…"
+        flash("Téléchargement de Mandarine \(r.version)…", at: NSEvent.mouseLocation, ok: true, sticky: false)
+        let target = Bundle.main.bundleURL
+        DispatchQueue.global().async {
+            let res = Result { try Updater.install(r, target: target, strict: true) }
+            DispatchQueue.main.async {
+                self.updating = false; self.updateItem.title = "Rechercher des mises à jour…"
+                switch res {
+                case .success:
+                    UserDefaults.standard.removeObject(forKey: "skippedVersion")
+                    Updater.relaunch(target)
+                    NSApp.terminate(nil)
+                case .failure(let e):
+                    let open = self.alert("La mise à jour a échoué", "\(e)\n\nTon ancienne version est intacte.",
+                                          buttons: ["Ouvrir la page de téléchargement", "Fermer"])
+                    if open { NSWorkspace.shared.open(Updater.releasesPage) }
+                }
+            }
         }
     }
 

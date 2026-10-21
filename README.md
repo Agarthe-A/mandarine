@@ -24,3 +24,11 @@ Téléchargement : https://github.com/Agarthe-A/mandarine/releases/tag/v0.2
 - Nouveaux outils : pivoter 90°, niveaux de gris, vidéo en 720p, vidéo ×2, normaliser le volume, couper les silences, 1re page d'un PDF, compresser un PDF (Ghostscript requis : `brew install ghostscript`). Nouvelles conversions : sous-titres SRT↔VTT, tableaux CSV↔TSV.
 - Moteur refactoré en registres : `Sources/Converters.swift` (un convertisseur par type de fichier) et `Sources/Tools.swift` (liste d'outils). Ajouter un outil = une entrée dans la liste.
 - Vérification : `./build.sh && ./verify.sh` génère de vrais fichiers, lance 76 contrôles et vérifie le format de chaque sortie. Code de sortie 0 = tout passe.
+
+## Version 0.3 — mises à jour intégrées
+- Menu 🍊 › « Rechercher des mises à jour… » (et vérification automatique au lancement puis toutes les 24 h, désactivable). Un clic : téléchargement, vérification, remplacement, relance.
+- Sécurité : HTTPS vers github.com/Agarthe-A/mandarine uniquement, empreinte SHA-256 obligatoire (lue dans les notes de la release), identifiant de l'app, version et signature contrôlés avant remplacement, ancienne version restaurée en cas d'échec.
+- Publier une version : `VERSION=x.y BUILD=n ./build.sh`, fabriquer le .dmg, puis une release GitHub `vx.y` dont les notes contiennent la ligne `SHA-256: <empreinte>`.
+- Tests : `./verify.sh` (90 contrôles dont 14 pour la mise à jour, avec un faux serveur local).
+- Installe la 0.3 à la main une fois : les versions 0.1 et 0.2 n'ont pas encore cette fonction.
+

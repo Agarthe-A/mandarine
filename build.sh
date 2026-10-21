@@ -2,8 +2,8 @@
 # Compile Mandarine et fabrique Mandarine.app (signature ad-hoc)
 set -e
 cd "$(dirname "$0")"
-VERSION=${VERSION:-0.2}
-BUILD=${BUILD:-2}
+VERSION=${VERSION:-0.3}
+BUILD=${BUILD:-3}
 swift build -c release
 APP=build/Mandarine.app
 rm -rf "$APP"
