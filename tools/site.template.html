@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mandarine</title>
+<meta name="description" content="Glisse un fichier, tape une touche, dépose sur la roue. Convertisseur de fichiers pour Mac, hors ligne.">
+<meta name="theme-color" content="#000000">
+<link rel="icon" href="assets/icon-180.png">
+<link rel="apple-touch-icon" href="assets/icon-180.png">
+<style>
+/* Hallmark · v2.0.0 · theme: custom · idea: "la roue de l'app, rendue par l'app, est la page" · vibe: "verre sombre, une seule couleur vive" · posture: ink on black, accent orange on hover and primary action only · faces: system (SF) chosen to match macOS */
+/* Hallmark · pre-emit critique: P4 H4 E4 S4 R4 V4 · weakest: E, the wheel on the page is a redraw of the app's wheel, not a screenshot; the app's own renders are used for the no-script state */
+:root{
+  color-scheme:dark;
+  --color-paper:#000; --color-paper-2:#0d0d0f; --color-paper-3:#1c1c1e; --color-ink:#f5f5f7; --color-ink-2:#d2d2d7; --color-muted:#a1a1a6;
+  --color-rule:rgba(255,255,255,.12); --color-accent:#ff9f0a; --color-accent-hi:#ffb840; --color-accent-lo:#ff7a05; --color-accent-ink:#1d1d1f; --color-focus:#ffb840;
+  --color-glass:rgba(24,24,28,.58); --color-glass-edge:rgba(255,255,255,.16); --color-slice:rgba(255,255,255,.1);
+  --font-display:-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Neue",system-ui,sans-serif; --font-body:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",system-ui,sans-serif;
+  --text-sm:.875rem; --text-md:1.0625rem; --text-lead:clamp(1.125rem,.4vw + 1rem,1.375rem); --text-title:clamp(1.5rem,1.2vw + 1.1rem,2.1rem); --text-section:clamp(2.25rem,3.6vw + .8rem,4.25rem); --text-display:clamp(3.5rem,8.4vw + .4rem,8.5rem);
+  --space-xs:8px; --space-sm:12px; --space-md:20px; --space-lg:32px; --space-xl:56px; --space-2xl:96px; --space-3xl:160px;
+  --radius-card:28px; --radius-pill:999px; --container:1180px; --gutter:clamp(20px,5vw,56px);
+  --ease:cubic-bezier(.16,1,.3,1); --shadow-card:0 30px 80px -30px rgba(0,0,0,.8),0 0 0 1px rgba(255,255,255,.07);
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{overflow-x:clip}
+html{scroll-behavior:smooth;scroll-padding-top:72px}
+body{margin:0;background:var(--color-paper);color:var(--color-ink);font:400 var(--text-md)/1.47 var(--font-body);letter-spacing:-.011em;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+a{color:inherit;text-decoration:none}
+h1,h2,h3,p{margin:0}
+h1,h2,h3{font-family:var(--font-display);font-weight:700;letter-spacing:-.035em;line-height:1.04;overflow-wrap:break-word;min-width:0}
+img,video,svg{display:block;max-width:100%}
+:focus-visible{outline:2px solid var(--color-focus);outline-offset:3px;border-radius:10px}
+.wrap{width:min(100% - 2*var(--gutter),var(--container));margin-inline:auto}
+
+/* barre */
+.bar{position:fixed;inset:0 0 auto 0;z-index:300;height:52px;background:rgba(10,10,12,.7);-webkit-backdrop-filter:saturate(180%) blur(22px);backdrop-filter:saturate(180%) blur(22px);border-bottom:1px solid var(--color-rule)}
+.bar .wrap{height:100%;display:flex;align-items:center;justify-content:space-between;gap:var(--space-md)}
+.brand{display:flex;align-items:center;gap:10px;font:600 17px var(--font-display);letter-spacing:-.02em}
+.brand img{width:26px;height:26px}
+.bar nav{display:flex;align-items:center;gap:clamp(14px,2.6vw,34px);font-size:13px;color:var(--color-ink-2)}
+.bar nav a{transition:color .2s}
+.bar nav a:hover{color:#fff}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 24px;border-radius:var(--radius-pill);background:var(--color-accent);color:var(--color-accent-ink);font:600 17px var(--font-body);letter-spacing:-.016em;transition:transform .3s var(--ease),background .2s,box-shadow .3s}
+.btn:hover{background:var(--color-accent-hi);transform:scale(1.025);box-shadow:0 10px 40px -8px rgba(255,159,10,.55)}
+.btn:active{transform:scale(.98)}
+.bar .btn{min-height:32px;padding:0 15px;font-size:13px}
+
+/* accueil */
+.hero{position:relative;min-height:100svh;padding:clamp(88px,12vh,120px) 0 var(--space-xl);display:grid;align-items:center;overflow:hidden}
+.hero::before{content:"";position:absolute;inset:-10% -10% auto 35%;height:90%;background:radial-gradient(closest-side,rgba(255,122,5,.30),transparent 72%);filter:blur(30px);pointer-events:none}
+.hero .wrap{position:relative;display:grid;grid-template-columns:minmax(0,1.02fr) minmax(0,1fr);gap:clamp(24px,5vw,72px);align-items:center}
+.hero h1{font-size:var(--text-display);line-height:.98;letter-spacing:-.05em}
+.hero h1 span{display:block}
+.hero h1 span:last-child{color:var(--color-accent)}
+.cta{display:flex;align-items:center;gap:var(--space-md);flex-wrap:wrap;margin-top:clamp(28px,5vh,52px)}
+.cta small{color:var(--color-muted);font-size:var(--text-sm)}
+
+/* roue */
+.stage{position:relative;border-radius:var(--radius-card);padding:clamp(18px,3vw,34px);background:radial-gradient(120% 90% at 78% 8%,rgba(255,138,30,.55),transparent 55%),radial-gradient(90% 80% at 6% 96%,rgba(235,64,110,.38),transparent 58%),#0b0b0e;box-shadow:var(--shadow-card);isolation:isolate;overflow:hidden}
+.stage::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:inset 0 1px 0 rgba(255,255,255,.12);pointer-events:none}
+.keys{display:flex;justify-content:center;gap:10px;margin-bottom:clamp(8px,2vw,18px)}
+.key{appearance:none;border:0;cursor:pointer;display:flex;align-items:center;gap:8px;min-height:44px;padding:0 18px;border-radius:var(--radius-pill);background:rgba(255,255,255,.1);color:var(--color-ink);font:500 15px var(--font-body);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);transition:background .2s,color .2s,transform .3s var(--ease)}
+.key b{font:500 18px var(--font-display)}
+.key:hover{background:rgba(255,255,255,.18)}
+.key[aria-pressed=true]{background:var(--color-ink);color:#111}
+.key:active{transform:scale(.96)}
+.wheel{position:relative;width:min(100%,520px);aspect-ratio:1;margin:0 auto}
+.wheel .glass{position:absolute;inset:0;border-radius:50%;background:var(--color-glass);-webkit-backdrop-filter:blur(26px) saturate(1.7);backdrop-filter:blur(26px) saturate(1.7);-webkit-mask:radial-gradient(circle closest-side,transparent 0 30%,#000 30.4% 84.6%,transparent 85%);mask:radial-gradient(circle closest-side,transparent 0 30%,#000 30.4% 84.6%,transparent 85%)}
+.wheel svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.wheel .ringline{fill:none;stroke:var(--color-glass-edge);stroke-width:1}
+.slice{cursor:pointer;outline:none}
+.slice path{fill:transparent;transition:fill .18s}
+.slice .sep{stroke:var(--color-slice);stroke-width:1}
+.slice text{fill:var(--color-ink);font:600 12.5px var(--font-body);text-anchor:middle;pointer-events:none;letter-spacing:-.1px;transition:fill .18s}
+.slice image{pointer-events:none;transition:filter .18s}
+.slice:hover path,.slice:focus-visible path,.slice.on path{fill:url(#hot)}
+.slice:hover text,.slice:focus-visible text,.slice.on text{fill:#161616}
+.slice:hover image,.slice:focus-visible image,.slice.on image{filter:brightness(0)}
+.slice.done path{animation:pulse .5s var(--ease)}
+@keyframes pulse{0%{transform:scale(1)}40%{transform:scale(1.035)}100%{transform:scale(1)}}
+.slice path{transform-origin:186px 186px;transform-box:view-box}
+.hub circle{fill:rgba(8,8,10,.82);stroke:rgba(255,255,255,.12)}
+.hub text{fill:var(--color-ink-2);font:600 9.5px var(--font-body);text-anchor:middle;letter-spacing:.3px}
+.hub .glyph{fill:var(--color-accent);font:600 22px var(--font-display)}
+.files{display:flex;justify-content:center;flex-wrap:wrap;gap:8px;margin-top:clamp(10px,2vw,22px)}
+.file{appearance:none;border:0;cursor:pointer;min-height:44px;padding:0 16px;border-radius:12px;background:rgba(255,255,255,.08);color:var(--color-ink-2);font:500 14px var(--font-body);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);transition:background .2s,color .2s}
+.file:hover{background:rgba(255,255,255,.16)}
+.file[aria-pressed=true]{background:rgba(255,159,10,.18);color:var(--color-accent-hi);box-shadow:inset 0 0 0 1px rgba(255,159,10,.55)}
+.result{position:absolute;left:50%;bottom:clamp(12px,2.4vw,22px);translate:-50% 14px;display:flex;align-items:center;gap:10px;min-height:44px;padding:0 18px 0 12px;border-radius:var(--radius-pill);background:rgba(28,28,32,.92);box-shadow:0 14px 44px -10px rgba(0,0,0,.7),inset 0 0 0 1px rgba(255,255,255,.12);font:600 15px var(--font-body);opacity:0;pointer-events:none;transition:opacity .25s,translate .4s var(--ease);white-space:nowrap;max-width:calc(100% - 24px)}
+.result.show{opacity:1;translate:-50% 0}
+.result i{width:24px;height:24px;border-radius:50%;background:var(--color-accent);display:grid;place-items:center;flex:none}
+.result i svg{width:14px;height:14px;stroke:#111;stroke-width:3;fill:none}
+.noscript{display:none}
+
+/* sections */
+section{padding:var(--space-3xl) 0}
+section.alt{background:var(--color-paper-2)}
+.head{max-width:900px;margin-bottom:var(--space-xl)}
+.head h2{font-size:var(--text-section)}
+.head p{margin-top:var(--space-md);color:var(--color-muted);font-size:var(--text-lead);max-width:34ch}
+.video{border-radius:var(--radius-card);overflow:hidden;box-shadow:var(--shadow-card);background:#000;aspect-ratio:16/9}
+.video video{width:100%;height:100%;object-fit:cover}
+
+.index{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--space-xl) var(--space-lg)}
+.index h3{font:600 var(--text-title)/1.1 var(--font-display);margin-bottom:var(--space-md);padding-bottom:var(--space-sm);border-bottom:1px solid var(--color-rule)}
+.index ul{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+.index li{display:grid;grid-template-columns:28px minmax(0,1fr);gap:12px;align-items:center;min-height:44px;color:var(--color-ink-2);font-size:var(--text-md)}
+.index li img{width:22px;height:22px;object-fit:contain;opacity:.92}
+.formats{display:grid;gap:0;margin:0;border-top:1px solid var(--color-rule)}
+.formats div{display:grid;grid-template-columns:minmax(0,200px) minmax(0,1fr);gap:var(--space-lg);padding:22px 0;border-bottom:1px solid var(--color-rule);align-items:baseline}
+.formats dt{font:600 var(--text-title)/1.1 var(--font-display)}
+.formats dd{margin:0;display:flex;flex-wrap:wrap;gap:8px}
+.formats span{min-height:34px;display:inline-flex;align-items:center;padding:0 14px;border-radius:var(--radius-pill);background:var(--color-paper-3);color:var(--color-ink-2);font-size:15px}
+.capture{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(28px,6vw,96px);align-items:center}
+.keycaps{display:flex;gap:14px;flex-wrap:wrap}
+.cap{width:clamp(78px,11vw,128px);aspect-ratio:1;border-radius:24px;background:linear-gradient(#f2efea,#d9d5ce);color:#2a2622;display:grid;place-items:center;font:500 clamp(34px,5vw,58px) var(--font-display);box-shadow:0 8px 0 #6f6b65,0 26px 40px -12px rgba(0,0,0,.7);position:relative}
+.cap small{position:absolute;left:12px;bottom:9px;font:600 12px var(--font-body);color:#6b665f}
+.shot{border-radius:var(--radius-card);background:#101012;box-shadow:var(--shadow-card);padding:clamp(18px,3vw,32px);display:grid;gap:12px}
+.shot i{display:block;border-radius:14px}
+.steps{list-style:none;margin:0;padding:0;border-top:1px solid var(--color-rule)}
+.steps li{display:grid;grid-template-columns:52px minmax(0,1fr);gap:20px;padding:24px 0;border-bottom:1px solid var(--color-rule);align-items:start}
+.steps b{font:600 var(--text-title)/1 var(--font-display);color:var(--color-accent)}
+.steps h3{font:600 clamp(1.25rem,1vw + 1rem,1.6rem)/1.2 var(--font-display);letter-spacing:-.02em}
+.steps code{display:block;margin-top:10px;overflow-wrap:anywhere;min-width:0;padding:12px 16px;border-radius:12px;background:var(--color-paper-3);color:var(--color-ink-2);font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}
+.getit{display:flex;justify-content:space-between;align-items:center;gap:var(--space-lg);flex-wrap:wrap;margin-bottom:var(--space-xl)}
+.getit h2{font-size:var(--text-section)}
+.todo{columns:2;column-gap:var(--space-xl);margin:0;padding:0;list-style:none;color:var(--color-ink-2)}
+.todo li{break-inside:avoid;padding:14px 0;border-bottom:1px solid var(--color-rule)}
+footer{padding:var(--space-xl) 0 var(--space-2xl);color:var(--color-muted);font-size:var(--text-sm);border-top:1px solid var(--color-rule)}
+footer .wrap{display:flex;justify-content:space-between;gap:var(--space-md);flex-wrap:wrap}
+footer a{color:var(--color-ink-2);text-decoration:underline;text-underline-offset:3px}
+
+@media (max-width:900px){
+  .hero{min-height:0}
+  .hero .wrap{grid-template-columns:minmax(0,1fr)}
+  .index{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .capture{grid-template-columns:minmax(0,1fr)}
+  .formats div{grid-template-columns:minmax(0,1fr)}
+  .todo{columns:1}
+  .bar nav a:not(.btn){display:none}
+  section{padding:var(--space-2xl) 0}
+}
+@media (max-width:520px){.index{grid-template-columns:minmax(0,1fr)}.key{padding:0 14px}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<header class="bar">
+  <div class="wrap">
+    <a class="brand" href="#top"><img src="assets/icon-180.png" alt="" width="26" height="26">Mandarine</a>
+    <nav>
+      <a href="#roue">La roue</a><a href="#outils">Outils</a><a href="#capture">Capture</a>
+      <a class="btn" href="__DMG__" download>Télécharger</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+  <div class="hero">
+    <div class="wrap" id="roue">
+      <div>
+        <h1><span>Glisse.</span><span>Tape.</span><span>Dépose.</span></h1>
+        <div class="cta">
+          <a class="btn" href="__DMG__" download>Télécharger pour Mac</a>
+          <small>Version __VERSION__ · macOS 13 ou plus · Apple Silicon</small>
+        </div>
+      </div>
+      <div class="stage">
+        <div class="keys" role="group" aria-label="Touche">
+          <button class="key" data-mode="convert" type="button"><b>⇧</b>Convertir</button>
+          <button class="key" data-mode="tools" type="button"><b>⌘</b>Outils</button>
+          <button class="key" data-mode="actions" type="button"><b>⌃</b>Actions</button>
+        </div>
+        <div class="wheel">
+          <div class="glass"></div>
+          <svg id="wheel" viewBox="0 0 372 372" role="group" aria-label="Roue">
+            <defs>
+              <radialGradient id="hot" cx="50%" cy="50%" r="60%"><stop offset="0" stop-color="#ffb840"/><stop offset=".55" stop-color="#ff9f0a"/><stop offset="1" stop-color="#ff7a05"/></radialGradient>
+            </defs>
+            <g id="ring"></g>
+          </svg>
+          <noscript><img class="noscript" src="assets/wheel/convert-png-1.webp" alt="Roue de conversion de Mandarine"></noscript>
+        </div>
+        <div class="files" role="group" aria-label="Fichier"></div>
+        <div class="result" id="result" role="status"><i><svg viewBox="0 0 16 16"><path d="M3 8.5l3.2 3.2L13 4.5"/></svg></i><span></span></div>
+      </div>
+    </div>
+  </div>
+
+  <section class="alt">
+    <div class="wrap">
+      <div class="head"><h2>En vrai.</h2></div>
+      <div class="video"><video controls preload="metadata" playsinline poster="poster.jpg"><source src="presentation.mp4" type="video/mp4"><a href="presentation.mp4">Vidéo</a></video></div>
+    </div>
+  </section>
+
+  <section id="outils">
+    <div class="wrap">
+      <div class="head"><h2>__TOOLS__ outils.<br>Un geste chacun.</h2></div>
+      <div class="index" id="index"></div>
+    </div>
+  </section>
+
+  <section class="alt" id="formats">
+    <div class="wrap">
+      <div class="head"><h2>__PAIRS__ conversions.</h2></div>
+      <dl class="formats" id="formats-list"></dl>
+    </div>
+  </section>
+
+  <section id="capture">
+    <div class="wrap capture">
+      <div>
+        <div class="head" style="margin-bottom:var(--space-xl)"><h2>Capture.<br>Sans fichier.</h2></div>
+        <div class="keycaps"><div class="cap">⌃<small>control</small></div><div class="cap">⇧<small>shift</small></div><div class="cap">4</div></div>
+      </div>
+      <div class="shot" aria-hidden="true"><i style="height:150px;background:linear-gradient(135deg,#ffb840,#ff6a00)"></i><div style="display:grid;grid-template-columns:1.4fr 1fr;gap:12px"><i style="height:96px;background:#2c2c30"></i><i style="height:96px;background:#3a2a2f"></i></div><i style="height:36px;background:#1d1d20"></i></div>
+    </div>
+  </section>
+
+  <section class="alt" id="installer">
+    <div class="wrap">
+      <div class="getit"><h2>Installer.</h2><a class="btn" href="__DMG__" download>Télécharger pour Mac</a></div>
+      <ol class="steps">
+        <li><b>1</b><div><h3>Glisse Mandarine dans Applications</h3></div></li>
+        <li><b>2</b><div><h3>Premier lancement : clic droit, Ouvrir</h3><code>xattr -cr /Applications/Mandarine.app</code></div></li>
+        <li><b>3</b><div><h3>Le menu de la barre : Mises à jour</h3></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="etat">
+    <div class="wrap">
+      <div class="head"><h2>Pas encore là.</h2></div>
+      <ul class="todo">__TODO__</ul>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Inspiré de Tangerine (tangerineformac.com). Aucun lien avec ses auteurs.</span>
+    <span>FFmpeg embarqué (GPL v3) · <a href="https://github.com/Agarthe-A/mandarine">Code source</a></span>
+  </div>
+</footer>
+
+<script id="catalog" type="application/json">__CATALOG__</script>
+<script>
+(() => {
+  const cat = JSON.parse(document.getElementById("catalog").textContent);
+  const toolBy = Object.fromEntries(cat.tools.map(t => [t.id, t]));
+  const FILES = [["png","photo.png"],["mp4","clip.mp4"],["wav","son.wav"],["pdf","doc.pdf"],["md","note.md"]];
+  const GLYPH = {convert:"⇧", tools:"⌘", actions:"⌃"};
+  const NS = "http://www.w3.org/2000/svg";
+  const C = 186, R_IN = 56, R_OUT = 158, GAP = 1.1;
+  let mode = "convert", file = "png";
+  const ring = document.getElementById("ring"), result = document.getElementById("result"), res = result.querySelector("span");
+  const el = (tag, attrs, text) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (text != null) e.textContent = text; return e; };
+  const pt = (r, deg) => { const a = (deg - 90) * Math.PI / 180; return [C + r * Math.cos(a), C + r * Math.sin(a)]; };
+  const sliceD = (i, n) => {
+    const g = n > 1 ? GAP : 0, a0 = i * 360 / n + g, a1 = (i + 1) * 360 / n - g;
+    const [x0,y0] = pt(R_OUT,a0), [x1,y1] = pt(R_OUT,a1), [x2,y2] = pt(R_IN,a1), [x3,y3] = pt(R_IN,a0);
+    const L = (a1 - a0) > 180 ? 1 : 0;
+    return `M${x0},${y0}A${R_OUT},${R_OUT} 0 ${L} 1 ${x1},${y1}L${x2},${y2}A${R_IN},${R_IN} 0 ${L} 0 ${x3},${y3}Z`;
+  };
+  const wrap = (s, max) => { const w = s.split(" "), out = [""]; for (const x of w) { const cur = out[out.length-1]; if ((cur + " " + x).trim().length > max && cur) out.push(x); else out[out.length-1] = (cur + " " + x).trim(); } return out; };
+
+  function entries() {
+    const s = cat.samples[file];
+    if (mode === "convert") return s.convert.map(t => ({label:t, out:t.toLowerCase()}));
+    if (mode === "tools") return s.tools.map(id => ({label:toolBy[id].title, icon:`assets/sym/tool-${id}.png`, out:toolBy[id].title}));
+    return cat.actions.map(a => ({label:a.title, icon:`assets/sym/${a.id.replace(":","-")}.png`, out:a.title}));
+  }
+  const base = () => FILES.find(f => f[0] === file)[1].replace(/\.[^.]+$/, "");
+
+  function draw() {
+    ring.replaceChildren();
+    const items = entries(), n = items.length;
+    ring.appendChild(el("circle", {class:"ringline", cx:C, cy:C, r:R_OUT}));
+    items.forEach((it, i) => {
+      const g = el("g", {class:"slice", tabindex:0, role:"button", "aria-label":it.label});
+      g.appendChild(el("path", {d:sliceD(i, n)}));
+      if (n > 1) { const [x0,y0] = pt(R_IN + 2, i * 360 / n), [x1,y1] = pt(R_OUT - 2, i * 360 / n); g.appendChild(el("line", {class:"sep", x1:x0, y1:y0, x2:x1, y2:y1})); }
+      const [cx, cy] = pt((R_IN + R_OUT) / 2 + 2, (i + .5) * 360 / n);
+      const lines = wrap(it.label, n > 8 ? 11 : 13), lh = 13, ih = it.icon ? 20 : 0, gap = it.icon ? 4 : 0;
+      const total = ih + gap + lines.length * lh, top = cy - total / 2;
+      if (it.icon) g.appendChild(el("image", {href:it.icon, x:cx - 10, y:top, width:20, height:20}));
+      const t = el("text", {x:cx, y:top + ih + gap + 10, style:`font-size:${n > 8 ? 11 : 12.5}px`});
+      lines.forEach((l, k) => t.appendChild(el("tspan", {x:cx, dy:k ? lh : 0}, l)));
+      g.appendChild(t);
+      const fire = () => { g.classList.remove("done"); void g.getBoundingClientRect(); g.classList.add("done"); say(mode === "convert" ? `${base()}.${it.out}` : mode === "tools" ? `${base()} · ${it.out}` : it.out); };
+      g.addEventListener("click", fire);
+      g.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fire(); } });
+      ring.appendChild(g);
+    });
+    const hub = el("g", {class:"hub"});
+    hub.appendChild(el("circle", {cx:C, cy:C, r:R_IN - 8}));
+    hub.appendChild(el("text", {class:"glyph", x:C, y:C - 2}, GLYPH[mode]));
+    hub.appendChild(el("text", {x:C, y:C + 15}, file.toUpperCase()));
+    ring.appendChild(hub);
+    document.querySelectorAll(".key").forEach(b => b.setAttribute("aria-pressed", b.dataset.mode === mode));
+    document.querySelectorAll(".file").forEach(b => b.setAttribute("aria-pressed", b.dataset.f === file));
+  }
+
+  let tm;
+  function say(s) { res.textContent = s; result.classList.add("show"); clearTimeout(tm); tm = setTimeout(() => result.classList.remove("show"), 1800); }
+
+  const files = document.querySelector(".files");
+  FILES.forEach(([k, label]) => { const b = document.createElement("button"); b.className = "file"; b.type = "button"; b.dataset.f = k; b.textContent = label; b.addEventListener("click", () => { file = k; draw(); }); files.appendChild(b); });
+  document.querySelectorAll(".key").forEach(b => b.addEventListener("click", () => { mode = b.dataset.mode; draw(); }));
+  addEventListener("keydown", e => { if (e.repeat || e.metaKey && e.key !== "Meta") return; const m = {Shift:"convert", Meta:"tools", Control:"actions"}[e.key]; if (m) { mode = m; draw(); } });
+  draw();
+
+  // index des outils
+  const groups = [["Images", ["image"]], ["Vidéo", ["video"]], ["Audio", ["audio"]], ["PDF", ["pdf"]]];
+  const idx = document.getElementById("index");
+  groups.forEach(([name, kinds]) => {
+    const list = cat.tools.filter(t => t.kinds.length && t.kinds.every(k => kinds.includes(k)) || (kinds[0] === "image" && t.kinds.includes("image") && t.kinds.length > 1 && t.id !== "compress" && false));
+    const own = cat.tools.filter(t => t.kinds.includes(kinds[0]) && (t.kinds.length === 1 || t.id === "cropSquare" && kinds[0] === "image"));
+    const shared = cat.tools.filter(t => t.kinds.length > 1 && t.kinds.includes(kinds[0]) && t.id !== "cropSquare");
+    const all = [...new Map([...own, ...shared].map(t => [t.id, t])).values()];
+    const sec = document.createElement("div"); const h = document.createElement("h3"); h.textContent = name; const ul = document.createElement("ul");
+    all.forEach(t => { const li = document.createElement("li"); li.innerHTML = `<img src="assets/sym/tool-${t.id}.png" alt="" width="22" height="22" loading="lazy"><span></span>`; li.querySelector("span").textContent = t.title; ul.appendChild(li); });
+    sec.append(h, ul); idx.appendChild(sec);
+  });
+  // formats
+  const dl = document.getElementById("formats-list");
+  const NAMES = {image:"Images", video:"Vidéo", audio:"Audio", doc:"Documents", pdf:"PDF", subtitle:"Sous-titres", table:"Tableaux", archive:"Archives"};
+  ["image","video","audio","doc","pdf","subtitle","table","archive"].forEach(k => {
+    const c = cat.convert[k]; if (!c) return;
+    const row = document.createElement("div"); const dt = document.createElement("dt"); dt.textContent = NAMES[k]; const dd = document.createElement("dd");
+    (k === "archive" ? ["extraction", "zip", "tar.gz"] : c.targets).forEach(t => { const s = document.createElement("span"); s.textContent = t; dd.appendChild(s); });
+    row.append(dt, dd); dl.appendChild(row);
+  });
+})();
+</script>
+</body>
+</html>

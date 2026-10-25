@@ -23,7 +23,7 @@ struct Tool {
 }
 
 /// Outil appliqué fichier par fichier : `body(src, kind)` renvoie le fichier produit.
-private func perFile(_ body: @escaping (URL, Kind) throws -> URL) -> ([URL]) throws -> [URL] {
+func perFile(_ body: @escaping (URL, Kind) throws -> URL) -> ([URL]) throws -> [URL] {
     { urls in try urls.map { try body($0, Engine.kind(of: $0)) } }
 }
 
@@ -44,6 +44,19 @@ enum Tools {
         Tool(id: "trimSilence", title: "Couper les silences", kinds: [.audio], accepts: { audioCodecs[Engine.normExt($0.pathExtension)] != nil }, run: perFile(trimSilence)),
         Tool(id: "firstPage", title: "1re page", kinds: [.pdf], run: perFile(firstPage)),
         Tool(id: "compressPDF", title: "Compresser PDF", kinds: [.pdf], accepts: { _ in Engine.ghostscript != nil }, run: perFile(compressPDF)),
+        // — ajoutés dans la v0.5 (ToolsMedia.swift) —
+        Tool(id: "cropSquare", title: "Recadrer en carré", kinds: [.image, .video], run: perFile(cropSquare)),
+        Tool(id: "background", title: "Ajouter un fond", kinds: [.image], run: perFile(background)),
+        Tool(id: "redact", title: "Flouter visages et texte", kinds: [.image], run: perFile(redact)),
+        Tool(id: "collage", title: "Collage", kinds: [.image], minCount: 2, run: collage),
+        Tool(id: "slow", title: "Ralentir ×2", kinds: [.video], run: perFile(slow)),
+        Tool(id: "joinVideos", title: "Assembler", kinds: [.video], minCount: 2, run: joinVideos),
+        Tool(id: "videoFrame", title: "Image du milieu", kinds: [.video], run: perFile(videoFrame)),
+        Tool(id: "splitVideo", title: "Couper en deux", kinds: [.video], run: perFile(splitVideo)),
+        Tool(id: "mono", title: "Passer en mono", kinds: [.audio], accepts: { audioCodecs[Engine.normExt($0.pathExtension)] != nil }, run: perFile(mono)),
+        Tool(id: "visualizer", title: "Vidéo avec onde", kinds: [.audio], run: perFile(visualizer)),
+        Tool(id: "splitPDF", title: "Une page par PDF", kinds: [.pdf], run: perFile(splitPDF)),
+        Tool(id: "rotatePDF", title: "Pivoter PDF", kinds: [.pdf], run: perFile(rotatePDF)),
     ]
 
     /// Formats image modifiables via sips (testés : jpg, png).

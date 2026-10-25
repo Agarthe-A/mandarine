@@ -30,7 +30,7 @@ struct ImageConverter: Converter {
     static let sipsFormats = ["jpg": "jpeg", "png": "png", "tiff": "tiff", "gif": "gif", "bmp": "bmp", "heic": "heic", "pdf": "pdf"]
 
     func targets(for url: URL) -> [String] {
-        without(["jpg", "png", "webp", "heic", "tiff", "avif", "gif", "pdf"], url)
+        without(["jpg", "png", "webp", "heic", "tiff", "avif", "bmp", "gif", "pdf"], url)
     }
 
     func convert(_ src: URL, to t: String) throws -> URL {
@@ -58,7 +58,7 @@ struct ImageConverter: Converter {
 // MARK: vidéo
 struct VideoConverter: Converter {
     let kind = Kind.video
-    func targets(for url: URL) -> [String] { without(["mp4", "mov", "mkv", "webm", "gif", "mp3"], url) }
+    func targets(for url: URL) -> [String] { without(["mp4", "mov", "mkv", "webm", "avi", "wmv", "gif", "mp3"], url) }
 
     func convert(_ src: URL, to t: String) throws -> URL {
         let out = Engine.outURL(src, ext: t)
@@ -70,6 +70,10 @@ struct VideoConverter: Converter {
             a += ["-c:v", "libx264", "-crf", "20", "-preset", "medium", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k"]
         case "webm":
             a += ["-c:v", "libvpx-vp9", "-crf", "32", "-b:v", "0", "-row-mt", "1", "-c:a", "libopus", "-b:a", "128k"]
+        case "avi":
+            a += ["-c:v", "mpeg4", "-q:v", "3", "-pix_fmt", "yuv420p", "-c:a", "libmp3lame", "-q:a", "3"]
+        case "wmv":
+            a += ["-c:v", "wmv2", "-q:v", "3", "-pix_fmt", "yuv420p", "-c:a", "wmav2", "-b:a", "192k"]
         case "gif":
             a += ["-vf", "fps=15,scale=480:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse", "-loop", "0"]
         case "mp3":
@@ -84,7 +88,7 @@ struct VideoConverter: Converter {
 // MARK: audio
 struct AudioConverter: Converter {
     let kind = Kind.audio
-    func targets(for url: URL) -> [String] { without(["mp3", "m4a", "wav", "flac", "opus", "ogg", "aiff"], url) }
+    func targets(for url: URL) -> [String] { without(["mp3", "m4a", "wav", "flac", "opus", "ogg", "aiff", "wma"], url) }
 
     func convert(_ src: URL, to t: String) throws -> URL {
         let out = Engine.outURL(src, ext: t)
@@ -96,6 +100,7 @@ struct AudioConverter: Converter {
         case "flac": a += ["-c:a", "flac"]
         case "opus", "ogg": a += ["-c:a", "libopus", "-b:a", "128k"]
         case "aiff": a += ["-c:a", "pcm_s16be"]
+        case "wma": a += ["-c:a", "wmav2", "-b:a", "192k"]
         default: throw EngineError("format audio inconnu: \(t)")
         }
         try Engine.ff(a + [out.path])

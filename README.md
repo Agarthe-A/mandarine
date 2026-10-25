@@ -1,34 +1,38 @@
 # Mandarine 🍊
-Clone perso de Tangerine (tangerineformac.com) : glisse un fichier, tape une touche, dépose sur la roue.
-- ⇧ Maj → convertir · ⌘ Cmd → outils · ⌃ Ctrl → actions (copier chemin, copier, AirDrop, déplacer, Terminal) · Échap annule
-- Build : `./build.sh` → `build/Mandarine.app` (ffmpeg embarqué, signature ad-hoc, icône 🍊 dans la barre de menus)
-- CLI de test : `Mandarine --list convert|tools|actions <fichiers>` · `Mandarine --run convert:png <fichiers>`
-- Moteur : sips, ffmpeg, PDFKit, Core Text, textutil, pandoc (md/epub), ditto/tar, Ghostscript (optionnel, seulement pour « Compresser PDF »)
-## État (2026-10-17)
-- Conversions testées en CLI : image (jpg/png/webp/heic/tiff/avif/gif/pdf), vidéo (mp4/mov/mkv/webm/gif/mp3), audio (mp3/m4a/wav/flac/opus/aiff), docs (docx/pdf/html/md/epub/txt/rtf), PDF→png/jpg/txt, zip/extraction, outils (compresser, réduire, sans métadonnées, couper le son, images→PDF, fusion PDF)
-- Roue : rendu hors écran vérifié (`--render`), hit-test des tranches OK (7 et 4 tranches)
-- NON testé : détection réelle du glisser + touches ⇧⌘⌃ + dépôt — l'écran du Mac mini est verrouillé (capture noire), à tester par Julian
-- Manque vs Tangerine : rogner/annoter/éditer photo, trim/split vidéo, flou visages, PDF→docx/pptx/xlsx, slides, tableurs, sous-titres, RAR
-## Page vitrine (2026-10-19)
-`site/index.html` : une seule page autonome (HTML/CSS/JS, aucune dépendance), à ouvrir directement dans un navigateur. Roue interactive (⇧ ⌘ ⌃ + type de fichier) dont les listes viennent de `Mandarine --list`. Vérifiée : bureau 1400 px et mobile 390 px, sans débordement. Pas encore publiée ; pas de téléchargement du .app (signature ad-hoc, build local).
+
+Convertisseur de fichiers pour Mac, hors ligne. Glisse un fichier, tape une touche, dépose-le sur la roue. Inspiré de [Tangerine](https://tangerineformac.com), sans lien avec ses auteurs.
+
+| Touche pendant le glisser | Roue |
+| --- | --- |
+| ⇧ Maj | Convertir (286 conversions : images, vidéo, audio, documents, PDF, sous-titres, tableaux, archives) |
+| ⌘ Cmd | Outils (26 : compresser, recadrer, flouter visages et texte, collage, assembler des vidéos, onde audio, pages PDF…) |
+| ⌃ Ctrl | Actions (AirDrop, flotter, copier, copier le chemin, déplacer, Terminal) |
+| Échap | Annuler |
+
+Capture d'écran dans le presse-papiers, sans fichier sur le Bureau : ⌃⇧4 (zone), ⌃⇧3 (écran).
+
+## Installer
+Télécharge le `.dmg` dans les [releases](https://github.com/Agarthe-A/mandarine/releases/latest), glisse Mandarine dans Applications. Mac Apple Silicon, macOS 13 ou plus. L'app n'est pas notarisée : premier lancement par clic droit, Ouvrir (ou `xattr -cr /Applications/Mandarine.app`). Les mises à jour se font ensuite depuis le menu de la barre.
 
 ## Compiler
-Prérequis : macOS 13+, Swift 5.9+. `./build.sh` embarque un `ffmpeg` si tu en as un (variable `FFMPEG=/chemin/vers/ffmpeg`, sinon l'app utilise celui du système s'il existe). Le binaire ffmpeg n'est pas distribué dans ce dépôt.
-Premier lancement : clic droit → Ouvrir (signature ad-hoc).
+Swift 5.9+, macOS 13+. `./build.sh` produit `build/Mandarine.app` (variables `VERSION`, `BUILD`, `FFMPEG=/chemin/vers/ffmpeg` pour l'embarquer). L'icône est dessinée par l'app elle-même (`--icon`).
 
-## Page vitrine
-`site/index.html` (+ `presentation.mp4`). Vidéo générée par `tools/make_video.py` ; `tools/serve.py` sert la page avec les requêtes Range que Safari exige pour lire une vidéo.
+## Vérifier
+`./verify.sh` génère de vrais fichiers, lance chaque conversion et chaque outil en ligne de commande, puis contrôle le format et le contenu de la sortie, y compris la mise à jour (faux serveur local). Code de sortie 0 = tout passe.
 
-## Version 0.2
-Téléchargement : https://github.com/Agarthe-A/mandarine/releases/tag/v0.2
-- Nouveaux outils : pivoter 90°, niveaux de gris, vidéo en 720p, vidéo ×2, normaliser le volume, couper les silences, 1re page d'un PDF, compresser un PDF (Ghostscript requis : `brew install ghostscript`). Nouvelles conversions : sous-titres SRT↔VTT, tableaux CSV↔TSV.
-- Moteur refactoré en registres : `Sources/Converters.swift` (un convertisseur par type de fichier) et `Sources/Tools.swift` (liste d'outils). Ajouter un outil = une entrée dans la liste.
-- Vérification : `./build.sh && ./verify.sh` génère de vrais fichiers, lance 76 contrôles et vérifie le format de chaque sortie. Code de sortie 0 = tout passe.
+```
+Mandarine --list convert|tools|actions <fichiers>   ce que propose la roue
+Mandarine --run convert:png <fichiers>              lance une conversion
+Mandarine --run tool:compress <fichiers>            lance un outil
+Mandarine --render tools out.png <fichiers>         dessine la roue hors écran (HOVER=n, SCALE=n)
+Mandarine --catalog                                 catalogue réel en JSON (alimente le site)
+```
 
-## Version 0.3 — mises à jour intégrées
-- Menu 🍊 › « Rechercher des mises à jour… » (et vérification automatique au lancement puis toutes les 24 h, désactivable). Un clic : téléchargement, vérification, remplacement, relance.
-- Sécurité : HTTPS vers github.com/Agarthe-A/mandarine uniquement, empreinte SHA-256 obligatoire (lue dans les notes de la release), identifiant de l'app, version et signature contrôlés avant remplacement, ancienne version restaurée en cas d'échec.
-- Publier une version : `VERSION=x.y BUILD=n ./build.sh`, fabriquer le .dmg, puis une release GitHub `vx.y` dont les notes contiennent la ligne `SHA-256: <empreinte>`.
-- Tests : `./verify.sh` (90 contrôles dont 14 pour la mise à jour, avec un faux serveur local).
-- Installe la 0.3 à la main une fois : les versions 0.1 et 0.2 n'ont pas encore cette fonction.
+## Ajouter un outil
+Une entrée dans `Tools.all` (`Sources/Tools.swift`), son code dans `Sources/ToolsMedia.swift`, un pictogramme dans `Sources/Icons.swift`, un test dans `verify.sh`. Un nouveau type de fichier : un `Converter` dans `Sources/Converters.swift`.
 
+## Site
+`tools/build_site.py <Mandarine.app> <version>` assemble `site/index.html` à partir du catalogue de l'app : le site ne peut pas annoncer ce que l'app ne fait pas. `tools/make_video.py` rend la vidéo de présentation avec les roues dessinées par l'app.
+
+## Licence
+FFmpeg (GPL v3) est embarqué dans le `.dmg`.

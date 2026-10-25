@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 import UserNotifications
 
 // MARK: mode ligne de commande (tests / scripts)
@@ -21,25 +22,95 @@ if args.count >= 4, args[1] == "--run" {
     }
 }
 
-if args.count >= 5, args[1] == "--render" {   // --render convert out.png <fichiers…> : dessine la roue hors écran + test des tranches
+if args.count >= 5, args[1] == "--render" {   // --render convert|tools|actions out.png <fichiers…> : dessine la roue hors écran + test des tranches
+    // HOVER=<n> choisit la tranche survolée (-1 = aucune), SCALE=<n> la définition (1 par défaut)
     _ = NSApplication.shared
     let urls = args.dropFirst(4).map { URL(fileURLWithPath: $0) }
-    let w = WheelView(frame: NSRect(x: 0, y: 0, width: 340, height: 340))
+    let w = WheelView(frame: NSRect(x: 0, y: 0, width: 372, height: 372))
+    w.flatBackdrop = true
     w.items = Engine.items(mode: args[2], urls: urls)
-    w.title = "⇧"; w.subtitle = urls.first?.pathExtension.uppercased() ?? ""
-    w.hovered = 1
-    guard let rep = w.bitmapImageRepForCachingDisplay(in: w.bounds) else { exit(1) }
+    w.keySymbol = args[2] == "convert" ? "shift" : (args[2] == "tools" ? "command" : "control")
+    w.subtitle = urls.count > 1 ? "\(urls.count) fichiers" : (urls.first?.pathExtension.uppercased() ?? "")
+    let env = ProcessInfo.processInfo.environment
+    let hv = Int(env["HOVER"] ?? "") ?? 1
+    w.hovered = hv >= 0 && hv < w.items.count ? hv : nil
+    let scale = max(1, Int(env["SCALE"] ?? "") ?? 1)
+    guard let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 372 * scale, pixelsHigh: 372 * scale, bitsPerSample: 8, samplesPerPixel: 4,
+                                     hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0) else { exit(1) }
+    rep.size = w.bounds.size
     w.cacheDisplay(in: w.bounds, to: rep)
     try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: args[3]))
     // hit-test : le centre de chaque tranche doit retrouver son index
     var bad = 0
     for i in w.items.indices {
         let a = (90 - (Double(i) + 0.5) * 360 / Double(w.items.count)) * .pi / 180
-        let pt = NSPoint(x: 170 + cos(a) * 96, y: 170 + sin(a) * 96)
+        let pt = NSPoint(x: 186 + cos(a) * 107, y: 186 + sin(a) * 107)
         if w.index(at: pt) != i { bad += 1; print("hit-test KO tranche", i, "->", w.index(at: pt) as Any) }
     }
     print("tranches:", w.items.count, "hit-test KO:", bad)
     exit(bad == 0 ? 0 : 1)
+}
+
+//   Mandarine --catalog : catalogue réel (conversions, outils, actions) en JSON, source des chiffres et de la liste du site
+//   Mandarine --symbols dossier : exporte en PNG blanc les pictogrammes utilisés par la roue
+if args.count >= 2, args[1] == "--catalog" {
+    let groups: [(String, Kind, [String])] = [
+        ("image", .image, Array(Engine.imageExts)), ("video", .video, Array(Engine.videoExts)), ("audio", .audio, Array(Engine.audioExts)),
+        ("pdf", .pdf, ["pdf"]), ("doc", .doc, Array(Engine.docExts)), ("archive", .archive, Array(Engine.archiveExts)),
+        ("subtitle", .subtitle, Array(Engine.subtitleExts)), ("table", .table, Array(Engine.tableExts)),
+    ]
+    var convert: [String: Any] = [:]; var pairs = 0
+    for (name, kind, exts) in groups {
+        guard let c = Converters.converter(for: kind) else { continue }
+        var union = Set<String>(); var n = 0
+        for e in exts.sorted() { let t = c.targets(for: URL(fileURLWithPath: "/tmp/x.\(e)")); union.formUnion(t); n += t.count }
+        pairs += n
+        convert[name] = ["targets": union.sorted(), "inputs": exts.sorted(), "pairs": n] as [String: Any]
+    }
+    if let f = Converters.converter(for: .folder) { let t = f.targets(for: URL(fileURLWithPath: "/tmp")); pairs += t.count; convert["folder"] = ["targets": t, "inputs": ["dossier"], "pairs": t.count] }
+    let kindName: (Kind) -> String = { "\($0)" }
+    let tools = Tools.all.map { ["id": $0.id, "title": $0.title, "kinds": $0.kinds.map(kindName).sorted(), "minCount": $0.minCount, "symbol": Style.symbols["tool:" + $0.id] ?? ""] as [String: Any] }
+    let actions = Engine.items(mode: "actions", urls: [URL(fileURLWithPath: "/tmp/x.png")]).map { ["id": $0.id, "title": $0.title, "symbol": Style.symbols[$0.id] ?? ""] }
+    // exemples de fichiers : ce que propose réellement la roue pour chacun (le site les rejoue tels quels)
+    var samples: [String: Any] = [:]
+    for e in ["png", "mp4", "wav", "pdf", "md", "csv", "srt"] {
+        let u = [URL(fileURLWithPath: "/tmp/x.\(e)")]
+        samples[e] = ["convert": Engine.items(mode: "convert", urls: u).map { $0.title },
+                      "tools": Engine.items(mode: "tools", urls: u).map { $0.id.replacingOccurrences(of: "tool:", with: "") }]
+    }
+    let out: [String: Any] = ["version": Updater.current, "conversionPairs": pairs, "convert": convert, "tools": tools, "actions": actions, "samples": samples]
+    let data = try! JSONSerialization.data(withJSONObject: out, options: [.prettyPrinted, .sortedKeys])
+    print(String(decoding: data, as: UTF8.self)); exit(0)
+}
+if args.count >= 3, args[1] == "--symbols" {
+    _ = NSApplication.shared
+    let dir = URL(fileURLWithPath: args[2]); try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    var n = 0
+    for (id, _) in Style.symbols {
+        guard let img = Style.symbol(id, size: 64, color: .white) else { continue }
+        let px = Int(img.size.width.rounded(.up)), py = Int(img.size.height.rounded(.up))
+        guard let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: px, pixelsHigh: py, bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true,
+                                         isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0) else { continue }
+        NSGraphicsContext.saveGraphicsState(); NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+        img.draw(in: NSRect(x: 0, y: 0, width: px, height: py)); NSGraphicsContext.restoreGraphicsState()
+        try? rep.representation(using: .png, properties: [:])?.write(to: dir.appendingPathComponent(id.replacingOccurrences(of: ":", with: "-") + ".png")); n += 1
+    }
+    print("symboles exportés:", n); exit(0)
+}
+
+//   Mandarine --icon out.png [taille] [tile] : dessine l'icône (tile = carré d'app)
+if args.count >= 3, args[1] == "--icon" {
+    _ = NSApplication.shared
+    let px = args.count >= 4 ? Int(args[3]) ?? 1024 : 1024
+    let img = Style.iconImage(size: CGFloat(px), tile: args.contains("tile"))
+    guard let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: px, pixelsHigh: px, bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true,
+                                     isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0) else { exit(1) }
+    NSGraphicsContext.saveGraphicsState()
+    NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+    img.draw(in: NSRect(x: 0, y: 0, width: px, height: px))
+    NSGraphicsContext.restoreGraphicsState()
+    try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: args[2]))
+    exit(0)
 }
 
 // MARK: panneaux
@@ -66,8 +137,14 @@ if args.count >= 4, args[1] == "--self-update" {
     } catch { FileHandle.standardError.write(Data("ERREUR: \(error)\n".utf8)); exit(1) }
 }
 
+//   Mandarine --capture screen   : capture l'écran entier vers le presse-papiers (test), affiche « ok » si une image y est arrivée
+if args.count >= 3, args[1] == "--capture", args[2] == "screen" {
+    let ok = Capture.run(region: false)
+    print(ok ? "ok" : "échec"); exit(ok ? 0 : 1)
+}
+
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    let size: CGFloat = 340
+    let size: CGFloat = 372
     var panel: WheelPanel!
     var wheel: WheelView!
     var toast: NSPanel?
@@ -75,6 +152,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var updateItem: NSMenuItem!
     var autoItem: NSMenuItem!
     var updating = false
+    var capturing = false
 
     var timer: Timer?
     var lastPBCount = NSPasteboard(name: .drag).changeCount
@@ -98,19 +176,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel.contentView = wheel
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        statusItem.button?.title = "🍊"
+        statusItem.button?.image = Style.menuBarImage()
         let menu = NSMenu()
-        menu.addItem(withTitle: "Mandarine", action: nil, keyEquivalent: "").isEnabled = false
-        menu.addItem(withTitle: "Glisse un fichier, puis tape :", action: nil, keyEquivalent: "").isEnabled = false
-        menu.addItem(withTitle: "   ⇧ Maj  → convertir", action: nil, keyEquivalent: "").isEnabled = false
-        menu.addItem(withTitle: "   ⌘ Cmd → outils", action: nil, keyEquivalent: "").isEnabled = false
-        menu.addItem(withTitle: "   ⌃ Ctrl → actions", action: nil, keyEquivalent: "").isEnabled = false
+        let capZone = NSMenuItem(title: "Capturer une zone", action: #selector(captureZone), keyEquivalent: "4")
+        capZone.keyEquivalentModifierMask = [.control, .shift]; capZone.target = self; menu.addItem(capZone)
+        let capScreen = NSMenuItem(title: "Capturer l'écran", action: #selector(captureScreen), keyEquivalent: "3")
+        capScreen.keyEquivalentModifierMask = [.control, .shift]; capScreen.target = self; menu.addItem(capScreen)
+        let okZone = HotKeys.register(id: 1, keyCode: kVK_ANSI_4, modifiers: controlKey | shiftKey) { [weak self] in self?.captureZone() }
+        let okScreen = HotKeys.register(id: 2, keyCode: kVK_ANSI_3, modifiers: controlKey | shiftKey) { [weak self] in self?.captureScreen() }
+        if !okZone { capZone.title = "Capturer une zone ⚠️" }
+        if !okScreen { capScreen.title = "Capturer l'écran ⚠️" }
         menu.addItem(.separator())
-        menu.addItem(withTitle: "Version \(Updater.current)", action: nil, keyEquivalent: "").isEnabled = false
-        updateItem = NSMenuItem(title: "Rechercher des mises à jour…", action: #selector(checkUpdatesManually), keyEquivalent: "")
+        menu.addItem(withTitle: "\(Updater.current)", action: nil, keyEquivalent: "").isEnabled = false
+        updateItem = NSMenuItem(title: "Mises à jour…", action: #selector(checkUpdatesManually), keyEquivalent: "")
         updateItem.target = self
         menu.addItem(updateItem)
-        autoItem = NSMenuItem(title: "Vérifier automatiquement", action: #selector(toggleAutoCheck), keyEquivalent: "")
+        autoItem = NSMenuItem(title: "Automatique", action: #selector(toggleAutoCheck), keyEquivalent: "")
         autoItem.target = self; autoItem.state = Updater.autoCheck ? .on : .off
         menu.addItem(autoItem)
         menu.addItem(.separator())
@@ -135,6 +216,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    // MARK: captures
+    @objc func captureZone() { capture(region: true) }
+    @objc func captureScreen() { capture(region: false) }
+    func capture(region: Bool) {
+        if capturing { return }
+        capturing = true
+        DispatchQueue.global().async {
+            // petite pause pour laisser le menu se fermer avant de photographier l'écran
+            if !region { Thread.sleep(forTimeInterval: 0.3) }
+            let ok = Capture.run(region: region)
+            DispatchQueue.main.async {
+                self.capturing = false
+                if ok { self.flash("📋 Capture copiée", at: NSEvent.mouseLocation, ok: true, sticky: false) }
+            }
+        }
+    }
+
     // MARK: mises à jour
     @objc func toggleAutoCheck() {
         Updater.autoCheck.toggle(); autoItem.state = Updater.autoCheck ? .on : .off
@@ -154,7 +252,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         DispatchQueue.global().async {
             let res = Result { try Updater.latest() }
             DispatchQueue.main.async {
-                self.updating = false; self.updateItem.title = "Rechercher des mises à jour…"
+                self.updating = false; self.updateItem.title = "Mises à jour…"
                 switch res {
                 case .failure(let e):
                     if manual { _ = self.alert("Impossible de vérifier", "\(e)\n\nVérifie ta connexion internet.") }
@@ -183,7 +281,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         DispatchQueue.global().async {
             let res = Result { try Updater.install(r, target: target, strict: true) }
             DispatchQueue.main.async {
-                self.updating = false; self.updateItem.title = "Rechercher des mises à jour…"
+                self.updating = false; self.updateItem.title = "Mises à jour…"
                 switch res {
                 case .success:
                     UserDefaults.standard.removeObject(forKey: "skippedVersion")
@@ -251,9 +349,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         mode = m
         wheel.items = items
         switch m {
-        case "convert": wheel.title = "⇧"
-        case "tools": wheel.title = "⌘"
-        default: wheel.title = "⌃"
+        case "convert": wheel.keySymbol = "shift"
+        case "tools": wheel.keySymbol = "command"
+        default: wheel.keySymbol = "control"
         }
         wheel.subtitle = dragURLs.count == 1 ? dragURLs[0].pathExtension.uppercased() : "\(dragURLs.count) fichiers"
 
@@ -296,6 +394,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func runAction(_ id: String, urls: [URL]) {
         let at = NSEvent.mouseLocation
         switch id {
+        case "act:float":
+            Shelf.show(urls, near: at)
         case "act:copypath":
             let pb = NSPasteboard.general
             pb.clearContents()

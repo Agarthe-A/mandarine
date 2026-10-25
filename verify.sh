@@ -91,6 +91,38 @@ assert "--list tools mp4 contient video720 et speed2, pas rotate90" '"$M" --list
 assert "--list tools wav : normalize+trimSilence" '"$M" --list tools s.wav | grep -q tool:normalize && "$M" --list tools s.wav | grep -q tool:trimSilence'
 assert "--list tools pdf : firstPage" '"$M" --list tools p.pdf | grep -q tool:firstPage'
 assert "--list convert srt/csv" '"$M" --list convert s.srt | grep -q convert:vtt && "$M" --list convert d.csv | grep -q convert:tsv'
+# --- v0.5 : nouveaux outils (format + contenu vérifiés) ---
+check tool:cropSquare PNG p.png; assert "cropSquare image : 800x600 -> 600x600" '[ "$(dim "$LAST")" = "600 600 " ]'
+check tool:cropSquare "ISO Media" a.mp4; assert "cropSquare vidéo : 640x360 -> 360x360" 'vinfo "$LAST" Video: | grep -q "360x360"'
+check tool:background PNG p.png; assert "background : image plus grande que l'original (marges)" '[ "$(dim "$LAST" | cut -d" " -f1)" -gt 800 ]'
+check tool:collage PNG p.png p2.png; assert "collage : une seule image PNG de sortie" '[ -f "$LAST" ] && [ "$(dim "$LAST" | cut -d" " -f1)" -gt 800 ]'
+check tool:slow "ISO Media" a.mp4; assert "slow : durée ~2 s -> ~4 s" '[ "$(echo "$(dur "$LAST") > 3.6 && $(dur "$LAST") < 4.5" | bc)" = 1 ]'
+check tool:slow "ISO Media" mute-only.mp4
+cp a.mp4 b.mp4; check tool:joinVideos "ISO Media" a.mp4 b.mp4; assert "joinVideos : durée ~4 s (2 clips de 2 s)" '[ "$(echo "$(dur "$LAST") > 3.7 && $(dur "$LAST") < 4.4" | bc)" = 1 ]'
+check tool:videoFrame PNG a.mp4
+check tool:splitVideo dir a.mp4; assert "splitVideo : 2 parties de ~1 s" '[ "$(ls "$LAST" | wc -l | tr -d " ")" = 2 ] && [ "$(echo "$(dur "$LAST/partie-1.mp4") > 0.8 && $(dur "$LAST/partie-1.mp4") < 1.3" | bc)" = 1 ]'
+check tool:mono "WAVE|RIFF" s.wav; assert "mono : 1 canal" 'vinfo "$LAST" Audio: | grep -q mono'
+check tool:visualizer "ISO Media" s.wav; assert "visualizer : vidéo 1280x720" 'vinfo "$LAST" Video: | grep -q "1280x720"'
+check tool:splitPDF dir deux.pdf; assert "splitPDF : 2 fichiers PDF" '[ "$(ls "$LAST" | wc -l | tr -d " ")" = 2 ]'
+check tool:rotatePDF PDF deux.pdf
+assert "rotatePDF : la page tourne de 90°" 'cd "$T" && cat > rot.swift <<EOS
+import PDFKit
+let d = PDFDocument(url: URL(fileURLWithPath: CommandLine.arguments[1]))!
+print(d.page(at: 0)!.rotation)
+EOS
+[ "$(swift rot.swift "$LAST" 2>/dev/null)" = 90 ]'
+assert "--list actions contient Flotter" '"$M" --list actions p.png | grep -q act:float'
+assert "--list tools png : collage seulement avec 2+ images" '! "$M" --list tools p.png | grep -q tool:collage && "$M" --list tools p.png p2.png | grep -q tool:collage'
+assert "--list tools mp4 : joinVideos seulement avec 2+ vidéos" '! "$M" --list tools a.mp4 | grep -q tool:joinVideos && "$M" --list tools a.mp4 b.mp4 | grep -q tool:joinVideos'
+check convert:bmp "PC bitmap" p.png
+check convert:avi "AVI" a.mp4; assert "avi : vidéo 640x360 relue par ffmpeg" 'vinfo "$LAST" Video: | grep -q "640x360"'
+check convert:wmv "ASF" a.mp4; assert "wmv : durée ~2 s" '[ "$(echo "$(dur "$LAST") > 1.7 && $(dur "$LAST") < 2.4" | bc)" = 1 ]'
+check convert:wma "ASF" s.wav; assert "wma : durée ~2 s" '[ "$(echo "$(dur "$LAST") > 1.7 && $(dur "$LAST") < 2.4" | bc)" = 1 ]'
+$FF -loglevel error -f lavfi -i "color=c=white:s=900x400,drawtext=fontfile=/System/Library/Fonts/Helvetica.ttc:text=CONFIDENTIEL:fontsize=80:x=40:y=80:fontcolor=black" -frames:v 1 txt.png
+$FF -loglevel error -f lavfi -i color=c=white:s=300x200 -frames:v 1 blank.png
+check tool:redact PNG txt.png; assert "redact : le texte est modifié (sortie différente de l'original)" '! cmp -s "$LAST" txt.png'
+assert "redact : zone sans texte intacte (coin bas-droit identique)" '[ "$($FF -loglevel error -i "$LAST" -vf crop=100:100:800:300,format=rgb24 -f md5 - )" = "$($FF -loglevel error -i txt.png -vf crop=100:100:800:300,format=rgb24 -f md5 - )" ]'
+assert "redact : image sans visage ni texte refusée" '! "$M" --run tool:redact blank.png >/dev/null 2>&1'
 # --- mise à jour depuis l'app : faux serveur local (jamais GitHub), dmg de test en version 99.0
 SRV=$T/srv; mkdir -p $SRV $T/inst
 mkfix() {  # mkfix <dossier-app-source> <nom.dmg> <version> <bundle-id>
@@ -134,6 +166,10 @@ assert "maj : aucun fichier temporaire laissé à côté de l'app" '[ -z "$(ls -
 assert "maj : plus de volume monté" '! hdiutil info | grep -q mandarine-update'
 assert "maj : deuxième passage = déjà à jour" '! "$M" --self-update $U/ok.json $T/inst/Mandarine.app >/dev/null 2>&1'
 kill $SRVPID 2>/dev/null; SRVPID=
+# capture d'écran -> presse-papiers (aucun fichier créé ; le contenu visuel n'est pas contrôlé : écran possiblement verrouillé)
+DESK=$(ls ~/Desktop | wc -l); printf 'avant' | pbcopy
+assert "capture : une image PNG arrive dans le presse-papiers" '"$M" --capture screen | grep -q "^ok" && osascript -e "clipboard info" 2>/dev/null | grep -q PNGf'
+assert "capture : aucun fichier créé sur le bureau" '[ "$(ls ~/Desktop | wc -l)" = "$DESK" ]'
 # cas d'erreur : un type de fichier inconnu doit échouer proprement (code ≠ 0), pas planter
 echo x > z.xyz; if "$M" --run convert:png z.xyz >/dev/null 2>&1; then echo "FAIL fichier inconnu accepté"; fail=$((fail+1)); else echo "ok   fichier inconnu refusé"; pass=$((pass+1)); fi
 echo; echo "résultat: $pass ok, $fail échec(s)"

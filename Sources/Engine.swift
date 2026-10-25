@@ -88,7 +88,7 @@ enum Engine {
         case "tools":
             return Tools.all.filter { $0.applies(to: urls, kinds: kinds) }.map { Item(id: "tool:\($0.id)", title: $0.title) }
         default:
-            return [Item(id: "act:copypath", title: "Copier le chemin"), Item(id: "act:copy", title: "Copier"),
+            return [Item(id: "act:copypath", title: "Copier le chemin"), Item(id: "act:float", title: "Flotter"), Item(id: "act:copy", title: "Copier"),
                     Item(id: "act:airdrop", title: "AirDrop"), Item(id: "act:move", title: "Déplacer…"),
                     Item(id: "act:terminal", title: "Terminal")]
         }

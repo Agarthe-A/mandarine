@@ -1,20 +1,35 @@
 import AppKit
 
 /// Roue radiale qui sert aussi de zone de dépôt.
+/// Fond : matériau HUD flou découpé en anneau ; survol : dégradé orange ; centre : touche active + type du fichier.
 final class WheelView: NSView {
     var items: [Item] = [] { didSet { hovered = nil; needsDisplay = true } }
-    var title = "" { didSet { needsDisplay = true } }
+    /// Nom du pictogramme de la touche active (« shift », « command », « control »).
+    var keySymbol = "shift" { didSet { needsDisplay = true } }
     var subtitle = "" { didSet { needsDisplay = true } }
     var hovered: Int? { didSet { if oldValue != hovered { needsDisplay = true } } }
     var onDrop: ((Item) -> Void)?
+    /// Vrai pour le rendu hors écran (le flou derrière la fenêtre n'existe pas dans un bitmap).
+    var flatBackdrop = false { didSet { blur?.isHidden = flatBackdrop } }
 
-    let inner: CGFloat = 50
-    let outer: CGFloat = 142
-    static let accent = NSColor(srgbRed: 1.0, green: 0.55, blue: 0.1, alpha: 1)
+    let inner: CGFloat = 56
+    let outer: CGFloat = 158
+    static let accent = Style.accent
+
+    private var blur: NSVisualEffectView?
 
     override init(frame: NSRect) {
         super.init(frame: frame)
         registerForDraggedTypes([.fileURL])
+        let v = NSVisualEffectView(frame: bounds)
+        v.material = .hudWindow; v.blendingMode = .behindWindow; v.state = .active
+        v.appearance = NSAppearance(named: .vibrantDark)
+        v.maskImage = ringMask()
+        v.autoresizingMask = [.width, .height]
+        addSubview(v)
+        blur = v
+        let f = Face(frame: bounds); f.owner = self; f.autoresizingMask = [.width, .height]
+        addSubview(f); face = f
     }
     required init?(coder: NSCoder) { fatalError() }
 
@@ -27,7 +42,7 @@ final class WheelView: NSView {
         guard !items.isEmpty else { return nil }
         let dx = p.x - center.x, dy = p.y - center.y
         let r = hypot(dx, dy)
-        guard r >= inner, r <= outer + 24 else { return nil }
+        guard r >= inner, r <= outer + 14 else { return nil }
         var a = Double.pi / 2 - atan2(Double(dy), Double(dx))   // sens horaire depuis le haut
         let full = 2 * Double.pi
         a = a.truncatingRemainder(dividingBy: full)
@@ -36,68 +51,116 @@ final class WheelView: NSView {
         return min(Int(a / seg), items.count - 1)
     }
 
-    private func slice(_ i: Int) -> NSBezierPath {
+    private func slice(_ i: Int, inset: CGFloat = 0) -> NSBezierPath {
         let n = Double(items.count)
-        let gap = items.count > 1 ? 1.6 : 0.0
+        let gap = items.count > 1 ? 1.1 : 0.0
         let s = 90 - (Double(i) * 360 / n) - gap
         let e = 90 - (Double(i + 1) * 360 / n) + gap
         let path = NSBezierPath()
-        path.appendArc(withCenter: center, radius: outer, startAngle: CGFloat(s), endAngle: CGFloat(e), clockwise: true)
-        path.appendArc(withCenter: center, radius: inner, startAngle: CGFloat(e), endAngle: CGFloat(s), clockwise: false)
+        path.appendArc(withCenter: center, radius: outer - inset, startAngle: CGFloat(s), endAngle: CGFloat(e), clockwise: true)
+        path.appendArc(withCenter: center, radius: inner + inset, startAngle: CGFloat(e), endAngle: CGFloat(s), clockwise: false)
         path.close()
+        path.lineJoinStyle = .round
         return path
     }
 
-    // MARK: dessin
-    override func draw(_ dirtyRect: NSRect) {
-        NSGraphicsContext.current?.cgContext.clear(bounds)
+    private func ringPath() -> NSBezierPath {
+        let ring = NSBezierPath(ovalIn: NSRect(x: center.x - outer, y: center.y - outer, width: outer * 2, height: outer * 2))
+        ring.append(NSBezierPath(ovalIn: NSRect(x: center.x - inner, y: center.y - inner, width: inner * 2, height: inner * 2)))
+        ring.windingRule = .evenOdd
+        return ring
+    }
 
-        // halo
-        let halo = NSBezierPath(ovalIn: NSRect(x: center.x - outer - 10, y: center.y - outer - 10, width: (outer + 10) * 2, height: (outer + 10) * 2))
-        NSColor(white: 0, alpha: 0.28).setFill()
-        halo.fill()
+    private func ringMask() -> NSImage {
+        NSImage(size: bounds.size, flipped: false) { _ in
+            NSColor.black.setFill(); self.ringPath().fill()
+            return true
+        }
+    }
+
+    // MARK: dessin
+    // Une sous-vue se dessine après la vue parente : le flou (sous-vue) cacherait les tranches.
+    // Le dessin vit donc dans `Face`, ajoutée au-dessus du flou.
+    private final class Face: NSView {
+        weak var owner: WheelView?
+        override var isFlipped: Bool { false }
+        override func hitTest(_ p: NSPoint) -> NSView? { nil }
+        override func draw(_ r: NSRect) { owner?.drawFace() }
+    }
+    private var face: Face?
+    override func draw(_ dirtyRect: NSRect) { NSGraphicsContext.current?.cgContext.clear(bounds) }
+    override var needsDisplay: Bool { didSet { face?.needsDisplay = true } }
+
+    func drawFace() {
+        NSGraphicsContext.current?.cgContext.clear(bounds)
+        let n = items.count
+
+        if flatBackdrop {
+            NSColor(srgbRed: 0.13, green: 0.13, blue: 0.15, alpha: 0.90).setFill(); ringPath().fill()
+        }
+        // voile sombre et filet de lumière : donne du corps au verre
+        NSColor(white: 0, alpha: 0.22).setFill(); ringPath().fill()
+        let edge = ringPath(); NSColor(white: 1, alpha: 0.16).setStroke(); edge.lineWidth = 1; edge.stroke()
 
         for i in items.indices {
-            let p = slice(i)
-            (hovered == i ? WheelView.accent : NSColor(white: 0.10, alpha: 0.90)).setFill()
-            p.fill()
-            NSColor(white: 1, alpha: hovered == i ? 0.0 : 0.10).setStroke()
-            p.lineWidth = 1
-            p.stroke()
+            let on = hovered == i
+            if on {
+                let p = slice(i, inset: 5)
+                NSGraphicsContext.saveGraphicsState()
+                let sh = NSShadow(); sh.shadowColor = Style.accent.withAlphaComponent(0.55); sh.shadowBlurRadius = 14; sh.shadowOffset = .zero
+                sh.set()
+                NSGradient(colors: [Style.accentTop, Style.accent, NSColor(srgbRed: 1, green: 0.46, blue: 0.02, alpha: 1)])?
+                    .draw(in: p, relativeCenterPosition: .zero)
+                NSGraphicsContext.restoreGraphicsState()
+                NSColor(white: 1, alpha: 0.35).setStroke(); p.lineWidth = 0.75; p.stroke()
+            } else if n > 1 {
+                // séparateur fin entre deux tranches
+                let a = (90 - Double(i) * 360 / Double(n)) * .pi / 180
+                let l = NSBezierPath()
+                l.move(to: NSPoint(x: center.x + CGFloat(cos(a)) * (inner + 2), y: center.y + CGFloat(sin(a)) * (inner + 2)))
+                l.line(to: NSPoint(x: center.x + CGFloat(cos(a)) * (outer - 2), y: center.y + CGFloat(sin(a)) * (outer - 2)))
+                NSColor(white: 1, alpha: 0.10).setStroke(); l.lineWidth = 1; l.stroke()
+            }
 
-            // libellé au milieu de la tranche
-            let n = Double(items.count)
-            let mid = (90 - (Double(i) + 0.5) * 360 / n) * .pi / 180
-            let r = (inner + outer) / 2
+            // contenu : pictogramme (outils, actions) au-dessus du libellé
+            let mid = (90 - (Double(i) + 0.5) * 360 / Double(n)) * .pi / 180
+            let r = (inner + outer) / 2 + 2
             let c = NSPoint(x: center.x + CGFloat(cos(mid)) * r, y: center.y + CGFloat(sin(mid)) * r)
-            let para = NSMutableParagraphStyle()
-            para.alignment = .center
-            para.lineBreakMode = .byWordWrapping
+            let fg = on ? NSColor(white: 0.10, alpha: 1) : NSColor(white: 1, alpha: 0.94)
+            let arc = 2 * CGFloat.pi * r / CGFloat(max(n, 1))
+            let w = min(86, max(54, arc - 6))
+            let fs: CGFloat = n > 8 ? 10.5 : (n > 6 ? 11.5 : 12.5)
+            let para = NSMutableParagraphStyle(); para.alignment = .center; para.lineBreakMode = .byWordWrapping; para.lineSpacing = -1
             let attrs: [NSAttributedString.Key: Any] = [
-                .font: NSFont.systemFont(ofSize: items.count > 6 ? 12 : 13, weight: .semibold),
-                .foregroundColor: hovered == i ? NSColor.black : NSColor.white,
-                .paragraphStyle: para
+                .font: NSFont.systemFont(ofSize: fs, weight: .semibold), .foregroundColor: fg, .paragraphStyle: para, .kern: -0.1,
             ]
-            let w: CGFloat = 84
             let str = items[i].title as NSString
-            let h = str.boundingRect(with: NSSize(width: w, height: 60), options: .usesLineFragmentOrigin, attributes: attrs).height
-            str.draw(in: NSRect(x: c.x - w / 2, y: c.y - h / 2, width: w, height: h), withAttributes: attrs)
+            let th = str.boundingRect(with: NSSize(width: w, height: 60), options: .usesLineFragmentOrigin, attributes: attrs).height
+            if let icon = Style.symbol(items[i].id, size: n > 8 ? 15 : 17, color: fg) {
+                let gap: CGFloat = 4
+                let total = icon.size.height + gap + th
+                let top = c.y + total / 2
+                icon.draw(in: NSRect(x: c.x - icon.size.width / 2, y: top - icon.size.height, width: icon.size.width, height: icon.size.height))
+                str.draw(in: NSRect(x: c.x - w / 2, y: top - total, width: w, height: th), withAttributes: attrs)
+            } else {
+                str.draw(in: NSRect(x: c.x - w / 2, y: c.y - th / 2, width: w, height: th), withAttributes: attrs)
+            }
         }
 
-        // centre
-        let disc = NSBezierPath(ovalIn: NSRect(x: center.x - inner + 6, y: center.y - inner + 6, width: (inner - 6) * 2, height: (inner - 6) * 2))
-        NSColor(white: 0.06, alpha: 0.95).setFill()
-        disc.fill()
-        WheelView.accent.setStroke()
-        disc.lineWidth = 2
-        disc.stroke()
-
-        let para = NSMutableParagraphStyle()
-        para.alignment = .center
-        let t1: [NSAttributedString.Key: Any] = [.font: NSFont.systemFont(ofSize: 20, weight: .bold), .foregroundColor: WheelView.accent, .paragraphStyle: para]
-        let t2: [NSAttributedString.Key: Any] = [.font: NSFont.systemFont(ofSize: 9, weight: .regular), .foregroundColor: NSColor(white: 0.8, alpha: 1), .paragraphStyle: para]
-        (title as NSString).draw(in: NSRect(x: center.x - 38, y: center.y - 2, width: 76, height: 26), withAttributes: t1)
-        (subtitle as NSString).draw(in: NSRect(x: center.x - 38, y: center.y - 15, width: 76, height: 13), withAttributes: t2)
+        // centre : touche active, type du fichier
+        let d = (inner - 8) * 2
+        let disc = NSBezierPath(ovalIn: NSRect(x: center.x - d / 2, y: center.y - d / 2, width: d, height: d))
+        NSColor(white: 0.04, alpha: 0.80).setFill(); disc.fill()
+        NSColor(white: 1, alpha: 0.12).setStroke(); disc.lineWidth = 1; disc.stroke()
+        if let key = NSImage(systemSymbolName: keySymbol, accessibilityDescription: nil)?
+            .withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: 19, weight: .semibold)) {
+            let tinted = NSImage(size: key.size, flipped: false) { r in key.draw(in: r); WheelView.accent.set(); r.fill(using: .sourceAtop); return true }
+            tinted.draw(in: NSRect(x: center.x - tinted.size.width / 2, y: center.y - 1, width: tinted.size.width, height: tinted.size.height))
+        }
+        let para = NSMutableParagraphStyle(); para.alignment = .center
+        let t2: [NSAttributedString.Key: Any] = [.font: NSFont.systemFont(ofSize: 9.5, weight: .semibold), .foregroundColor: NSColor(white: 1, alpha: 0.62),
+                                                  .paragraphStyle: para, .kern: 0.4]
+        (subtitle as NSString).draw(in: NSRect(x: center.x - 36, y: center.y - 17, width: 72, height: 13), withAttributes: t2)
     }
 
     // MARK: dépôt

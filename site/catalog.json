@@ -1,0 +1,534 @@
+{
+ "actions": [
+  {
+   "id": "act:copypath",
+   "symbol": "link",
+   "title": "Copier le chemin"
+  },
+  {
+   "id": "act:float",
+   "symbol": "rectangle.on.rectangle",
+   "title": "Flotter"
+  },
+  {
+   "id": "act:copy",
+   "symbol": "doc.on.doc",
+   "title": "Copier"
+  },
+  {
+   "id": "act:airdrop",
+   "symbol": "dot.radiowaves.left.and.right",
+   "title": "AirDrop"
+  },
+  {
+   "id": "act:move",
+   "symbol": "folder",
+   "title": "Déplacer…"
+  },
+  {
+   "id": "act:terminal",
+   "symbol": "terminal",
+   "title": "Terminal"
+  }
+ ],
+ "conversionPairs": 286,
+ "convert": {
+  "archive": {
+   "inputs": [
+    "gz",
+    "tar",
+    "tgz",
+    "zip"
+   ],
+   "pairs": 4,
+   "targets": [
+    "extract"
+   ]
+  },
+  "audio": {
+   "inputs": [
+    "aac",
+    "aif",
+    "aiff",
+    "caf",
+    "flac",
+    "m4a",
+    "mp3",
+    "ogg",
+    "opus",
+    "wav",
+    "wma"
+   ],
+   "pairs": 79,
+   "targets": [
+    "aiff",
+    "flac",
+    "m4a",
+    "mp3",
+    "ogg",
+    "opus",
+    "wav",
+    "wma"
+   ]
+  },
+  "doc": {
+   "inputs": [
+    "doc",
+    "docx",
+    "epub",
+    "htm",
+    "html",
+    "markdown",
+    "md",
+    "odt",
+    "rtf",
+    "txt"
+   ],
+   "pairs": 48,
+   "targets": [
+    "docx",
+    "epub",
+    "html",
+    "md",
+    "pdf",
+    "rtf",
+    "txt"
+   ]
+  },
+  "folder": {
+   "inputs": [
+    "dossier"
+   ],
+   "pairs": 2,
+   "targets": [
+    "zip",
+    "tar.gz"
+   ]
+  },
+  "image": {
+   "inputs": [
+    "avif",
+    "bmp",
+    "gif",
+    "heic",
+    "heif",
+    "jpeg",
+    "jpg",
+    "png",
+    "tif",
+    "tiff",
+    "webp"
+   ],
+   "pairs": 88,
+   "targets": [
+    "avif",
+    "bmp",
+    "gif",
+    "heic",
+    "jpg",
+    "pdf",
+    "png",
+    "tiff",
+    "webp"
+   ]
+  },
+  "pdf": {
+   "inputs": [
+    "pdf"
+   ],
+   "pairs": 3,
+   "targets": [
+    "jpg",
+    "png",
+    "txt"
+   ]
+  },
+  "subtitle": {
+   "inputs": [
+    "srt",
+    "vtt"
+   ],
+   "pairs": 2,
+   "targets": [
+    "srt",
+    "vtt"
+   ]
+  },
+  "table": {
+   "inputs": [
+    "csv",
+    "tsv"
+   ],
+   "pairs": 2,
+   "targets": [
+    "csv",
+    "tsv"
+   ]
+  },
+  "video": {
+   "inputs": [
+    "avi",
+    "flv",
+    "m4v",
+    "mkv",
+    "mov",
+    "mp4",
+    "webm",
+    "wmv"
+   ],
+   "pairs": 58,
+   "targets": [
+    "avi",
+    "gif",
+    "mkv",
+    "mov",
+    "mp3",
+    "mp4",
+    "webm",
+    "wmv"
+   ]
+  }
+ },
+ "samples": {
+  "csv": {
+   "convert": [
+    "TSV"
+   ],
+   "tools": []
+  },
+  "md": {
+   "convert": [
+    "DOCX",
+    "HTML",
+    "PDF",
+    "EPUB",
+    "TXT"
+   ],
+   "tools": []
+  },
+  "mp4": {
+   "convert": [
+    "MOV",
+    "MKV",
+    "WEBM",
+    "AVI",
+    "WMV",
+    "GIF",
+    "MP3"
+   ],
+   "tools": [
+    "compress",
+    "mute",
+    "strip",
+    "video720",
+    "speed2",
+    "cropSquare",
+    "slow",
+    "videoFrame",
+    "splitVideo"
+   ]
+  },
+  "pdf": {
+   "convert": [
+    "PNG",
+    "JPG",
+    "TXT"
+   ],
+   "tools": [
+    "firstPage",
+    "compressPDF",
+    "splitPDF",
+    "rotatePDF"
+   ]
+  },
+  "png": {
+   "convert": [
+    "JPG",
+    "WEBP",
+    "HEIC",
+    "TIFF",
+    "AVIF",
+    "BMP",
+    "GIF",
+    "PDF"
+   ],
+   "tools": [
+    "compress",
+    "resize50",
+    "strip",
+    "rotate90",
+    "gray",
+    "cropSquare",
+    "background",
+    "redact"
+   ]
+  },
+  "srt": {
+   "convert": [
+    "VTT"
+   ],
+   "tools": []
+  },
+  "wav": {
+   "convert": [
+    "MP3",
+    "M4A",
+    "FLAC",
+    "OPUS",
+    "OGG",
+    "AIFF",
+    "WMA"
+   ],
+   "tools": [
+    "compress",
+    "strip",
+    "normalize",
+    "trimSilence",
+    "mono",
+    "visualizer"
+   ]
+  }
+ },
+ "tools": [
+  {
+   "id": "imagesToPDF",
+   "kinds": [
+    "image"
+   ],
+   "minCount": 2,
+   "symbol": "doc.richtext",
+   "title": "Créer un PDF"
+  },
+  {
+   "id": "mergePDF",
+   "kinds": [
+    "pdf"
+   ],
+   "minCount": 2,
+   "symbol": "square.on.square",
+   "title": "Fusionner PDF"
+  },
+  {
+   "id": "compress",
+   "kinds": [
+    "audio",
+    "image",
+    "video"
+   ],
+   "minCount": 1,
+   "symbol": "arrow.down.right.and.arrow.up.left",
+   "title": "Compresser"
+  },
+  {
+   "id": "resize50",
+   "kinds": [
+    "image"
+   ],
+   "minCount": 1,
+   "symbol": "arrow.down.right.and.arrow.up.left.circle",
+   "title": "Réduire 50 %"
+  },
+  {
+   "id": "mute",
+   "kinds": [
+    "video"
+   ],
+   "minCount": 1,
+   "symbol": "speaker.slash",
+   "title": "Couper le son"
+  },
+  {
+   "id": "strip",
+   "kinds": [
+    "audio",
+    "image",
+    "video"
+   ],
+   "minCount": 1,
+   "symbol": "eye.slash",
+   "title": "Sans métadonnées"
+  },
+  {
+   "id": "rotate90",
+   "kinds": [
+    "image"
+   ],
+   "minCount": 1,
+   "symbol": "rotate.right",
+   "title": "Pivoter 90°"
+  },
+  {
+   "id": "gray",
+   "kinds": [
+    "image"
+   ],
+   "minCount": 1,
+   "symbol": "circle.lefthalf.filled",
+   "title": "Niveaux de gris"
+  },
+  {
+   "id": "video720",
+   "kinds": [
+    "video"
+   ],
+   "minCount": 1,
+   "symbol": "tv",
+   "title": "Réduire en 720p"
+  },
+  {
+   "id": "speed2",
+   "kinds": [
+    "video"
+   ],
+   "minCount": 1,
+   "symbol": "forward",
+   "title": "Accélérer ×2"
+  },
+  {
+   "id": "normalize",
+   "kinds": [
+    "audio"
+   ],
+   "minCount": 1,
+   "symbol": "waveform",
+   "title": "Normaliser le volume"
+  },
+  {
+   "id": "trimSilence",
+   "kinds": [
+    "audio"
+   ],
+   "minCount": 1,
+   "symbol": "scissors",
+   "title": "Couper les silences"
+  },
+  {
+   "id": "firstPage",
+   "kinds": [
+    "pdf"
+   ],
+   "minCount": 1,
+   "symbol": "doc",
+   "title": "1re page"
+  },
+  {
+   "id": "compressPDF",
+   "kinds": [
+    "pdf"
+   ],
+   "minCount": 1,
+   "symbol": "arrow.down.doc",
+   "title": "Compresser PDF"
+  },
+  {
+   "id": "cropSquare",
+   "kinds": [
+    "image",
+    "video"
+   ],
+   "minCount": 1,
+   "symbol": "crop",
+   "title": "Recadrer en carré"
+  },
+  {
+   "id": "background",
+   "kinds": [
+    "image"
+   ],
+   "minCount": 1,
+   "symbol": "photo.on.rectangle",
+   "title": "Ajouter un fond"
+  },
+  {
+   "id": "redact",
+   "kinds": [
+    "image"
+   ],
+   "minCount": 1,
+   "symbol": "face.dashed",
+   "title": "Flouter visages et texte"
+  },
+  {
+   "id": "collage",
+   "kinds": [
+    "image"
+   ],
+   "minCount": 2,
+   "symbol": "square.grid.2x2",
+   "title": "Collage"
+  },
+  {
+   "id": "slow",
+   "kinds": [
+    "video"
+   ],
+   "minCount": 1,
+   "symbol": "tortoise",
+   "title": "Ralentir ×2"
+  },
+  {
+   "id": "joinVideos",
+   "kinds": [
+    "video"
+   ],
+   "minCount": 2,
+   "symbol": "rectangle.stack",
+   "title": "Assembler"
+  },
+  {
+   "id": "videoFrame",
+   "kinds": [
+    "video"
+   ],
+   "minCount": 1,
+   "symbol": "camera.viewfinder",
+   "title": "Image du milieu"
+  },
+  {
+   "id": "splitVideo",
+   "kinds": [
+    "video"
+   ],
+   "minCount": 1,
+   "symbol": "rectangle.split.2x1",
+   "title": "Couper en deux"
+  },
+  {
+   "id": "mono",
+   "kinds": [
+    "audio"
+   ],
+   "minCount": 1,
+   "symbol": "speaker.wave.1",
+   "title": "Passer en mono"
+  },
+  {
+   "id": "visualizer",
+   "kinds": [
+    "audio"
+   ],
+   "minCount": 1,
+   "symbol": "waveform.circle",
+   "title": "Vidéo avec onde"
+  },
+  {
+   "id": "splitPDF",
+   "kinds": [
+    "pdf"
+   ],
+   "minCount": 1,
+   "symbol": "rectangle.split.3x1",
+   "title": "Une page par PDF"
+  },
+  {
+   "id": "rotatePDF",
+   "kinds": [
+    "pdf"
+   ],
+   "minCount": 1,
+   "symbol": "rotate.right",
+   "title": "Pivoter PDF"
+  }
+ ],
+ "version": "0.5"
+}
